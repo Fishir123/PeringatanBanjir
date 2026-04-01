@@ -1,13 +1,45 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="id">
 <head>
-  <title>Express</title>
-  <link rel="stylesheet" href="/stylesheets/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Peringatan Banjir</title>
+  <link rel="stylesheet" href="/stylesheets/style.css" />
 </head>
-
 <body>
-  <h1>Express</h1>
-  <p>Welcome to Express</p>
-</body>
+  <div class="container">
+    <header>
+      <h1>Dashboard Peringatan Banjir</h1>
+      <p>Monitoring data sensor ketinggian air real-time</p>
+    </header>
 
+    <section class="controls">
+      <button id="btnLatest">Data Terbaru per Device</button>
+      <button id="btnAll">Semua Data</button>
+      <input type="text" id="deviceId" placeholder="Filter device_id (contoh: sensor-01)" />
+      <button id="btnByDevice">Cari Device</button>
+    </section>
+
+    <section class="status">
+      <span id="statusText">Siap memuat data...</span>
+    </section>
+
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Device ID</th>
+            <th>Water Level (cm)</th>
+            <th>Waktu</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="sensorTableBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script src="/main.js"></script>
+</body>
 </html>
