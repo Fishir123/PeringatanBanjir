@@ -1,79 +1,112 @@
-const express = require('express')
-var router = express.Router();
-
-// In-memory storage (sementara, data hilang saat server restart)
-let sensorDataStore = [];
+const express = require('express');
+const router = express.Router();
+const db = require('../config/db');
 
 // GET semua data sensor
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT id, device_id, water_level, created_at FROM sensor_data ORDER BY created_at DESC LIMIT 500'
+    );
+
     res.json({
-        message: "Data sensor berhasil diambil",
-        data: sensorDataStore
+      message: 'Data sensor berhasil diambil',
+      data: rows
     });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil data sensor',
+      error: error.message
+    });
+  }
 });
 
 // GET data sensor terbaru per device
-router.get('/latest', (req, res) => {
-    // Ambil data terbaru untuk setiap device
-    const latestByDevice = {};
-    
-    sensorDataStore.forEach(item => {
-        if (!latestByDevice[item.device_id] || 
-            new Date(item.timestamp) > new Date(latestByDevice[item.device_id].timestamp)) {
-            latestByDevice[item.device_id] = item;
-        }
-    });
-    
-    const latestData = Object.values(latestByDevice);
-    
+router.get('/latest', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT s1.id, s1.device_id, s1.water_level, s1.created_at
+       FROM sensor_data s1
+       INNER JOIN (
+         SELECT device_id, MAX(created_at) AS max_created_at
+         FROM sensor_data
+         GROUP BY device_id
+       ) s2 ON s1.device_id = s2.device_id AND s1.created_at = s2.max_created_at
+       ORDER BY s1.created_at DESC`
+    );
+
     res.json({
-        message: "Data sensor terbaru berhasil diambil",
-        data: latestData
+      message: 'Data sensor terbaru berhasil diambil',
+      data: rows
     });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil data sensor terbaru',
+      error: error.message
+    });
+  }
 });
 
 // GET data sensor berdasarkan device_id
-router.get('/:device_id', (req, res) => {
+router.get('/:device_id', async (req, res) => {
+  try {
     const { device_id } = req.params;
-    const deviceData = sensorDataStore.filter(item => item.device_id === device_id);
-    
+    const [rows] = await db.query(
+      'SELECT id, device_id, water_level, created_at FROM sensor_data WHERE device_id = ? ORDER BY created_at DESC LIMIT 500',
+      [device_id]
+    );
+
     res.json({
-        message: `Data sensor untuk device ${device_id}`,
-        data: deviceData
+      message: `Data sensor untuk device ${device_id}`,
+      data: rows
     });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil data sensor per device',
+      error: error.message
+    });
+  }
 });
 
 // POST - terima data dari wokwi
-router.post('/', (req, res) => {
-    const {device_id, water_level} = req.body
+router.post('/', async (req, res) => {
+  try {
+    const { device_id, water_level } = req.body;
 
-    console.log("Data dari sensor", req.body)
-
-    if(!device_id || water_level === undefined) {
-        return res.status(400).json({
-            message: "Data tidak lengkap"
-        })
+    if (!device_id || water_level === undefined) {
+      return res.status(400).json({
+        message: 'Data tidak lengkap'
+      });
     }
 
-    // Simpan ke in-memory storage
-    const newData = {
-        id: sensorDataStore.length + 1,
-        device_id,
-        water_level: parseFloat(water_level),
-        timestamp: new Date().toISOString()
-    };
-    
-    sensorDataStore.push(newData);
-    
-    // Batasi storage maksimal 1000 data (opsional, untuk mencegah memory leak)
-    if (sensorDataStore.length > 1000) {
-        sensorDataStore = sensorDataStore.slice(-500);
+    const parsedWaterLevel = Number(water_level);
+
+    if (Number.isNaN(parsedWaterLevel)) {
+      return res.status(400).json({
+        message: 'water_level harus berupa angka'
+      });
     }
+
+    const [result] = await db.query(
+      'INSERT INTO sensor_data (device_id, water_level) VALUES (?, ?)',
+      [device_id, parsedWaterLevel]
+    );
+
+    const [insertedRows] = await db.query(
+      'SELECT id, device_id, water_level, created_at FROM sensor_data WHERE id = ?',
+      [result.insertId]
+    );
 
     res.json({
-        message: "Data berhasil diterima", 
-        data: newData
-    })
-})
+      message: 'Data berhasil diterima',
+      data: insertedRows[0]
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal menyimpan data sensor',
+      error: error.message
+    });
+  }
+});
 
-module.exports = router
+module.exports = router;
