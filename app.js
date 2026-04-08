@@ -9,6 +9,9 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var sensorRouter = require('./routes/sensor');
 
+// MQTT Subscriber for ESP32 sensor data
+var mqttSubscriber = require('./mqtt/subscriber');
+
 var app = express();
 
 app.use(cors());
@@ -21,5 +24,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/sensor-data', sensorRouter);
+
+// Start MQTT subscriber
+mqttSubscriber.connect();
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down...');
+  mqttSubscriber.disconnect();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\nShutting down...');
+  mqttSubscriber.disconnect();
+  process.exit(0);
+});
 
 module.exports = app;
