@@ -3,13 +3,15 @@
  * 
  * Listens to MQTT topics from ESP32 sensors and stores data in MySQL database.
  * 
- * Topic format: {prefix}/sensor/{device_id}/data
- * Example: floodguard/sensor/SENSOR-001/data
+ * Topic format:
+ * - {prefix}/sensor/{device_id}/data (legacy)
+ * - sensor/ultrasonic (ESP32 simple topic)
  * 
  * Expected payload (JSON):
  * {
- *   "water_level": 45.2,        // Required: water level in cm
+ *   "water_level": 45.2,        // Preferred: water level in cm
  *   "distance_cm": 150.5,       // Optional: raw ultrasonic distance
+ *   "device_id": "SENSOR-001", // Required for simple topic, optional for legacy topic
  *   "battery_level": 85,        // Optional: battery percentage (0-100)
  *   "signal_strength": -67      // Optional: WiFi signal in dBm
  * }
@@ -21,6 +23,9 @@ const pool = require('../config/db');
 // Configuration from environment variables
 const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
 const MQTT_TOPIC_PREFIX = process.env.MQTT_TOPIC_PREFIX || 'floodguard';
+const MQTT_SIMPLE_TOPIC = process.env.MQTT_SIMPLE_TOPIC || 'sensor/ultrasonic';
+const MQTT_DEFAULT_DEVICE_ID = process.env.MQTT_DEFAULT_DEVICE_ID || 'SENSOR-001';
+const MQTT_SENSOR_HEIGHT_CM = process.env.MQTT_SENSOR_HEIGHT_CM;
 
 // Topic pattern: floodguard/sensor/+/data (+ is wildcard for device_id)
 const SENSOR_DATA_TOPIC = `${MQTT_TOPIC_PREFIX}/sensor/+/data`;
@@ -32,10 +37,15 @@ let client = null;
  * Uses default thresholds - can be customized per device in the future
  */
 function getWaterStatus(waterLevel) {
-  if (waterLevel < 100) return 'safe';
-  if (waterLevel < 150) return 'warning';
-  if (waterLevel < 200) return 'danger';
-  return 'critical';
+  if (waterLevel >= 50) return 'danger';
+  if (waterLevel >= 30) return 'warning';
+  return 'safe';
+}
+
+function resolveStatusMetric(data, waterLevel) {
+  const distanceCm = toNullableNumber(data.distance_cm);
+  if (distanceCm !== null) return distanceCm;
+  return waterLevel;
 }
 
 /**
@@ -51,19 +61,62 @@ function extractDeviceId(topic) {
   return null;
 }
 
+function toNullableNumber(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveWaterLevel(payload) {
+  const waterLevel = toNullableNumber(payload.water_level);
+  if (waterLevel !== null) return waterLevel;
+
+  const distanceCm = toNullableNumber(payload.distance_cm);
+  if (distanceCm === null) return null;
+
+  const payloadSensorHeight = toNullableNumber(payload.sensor_height_cm);
+  const envSensorHeight = toNullableNumber(MQTT_SENSOR_HEIGHT_CM);
+  const sensorHeight = payloadSensorHeight ?? envSensorHeight;
+
+  if (sensorHeight !== null) {
+    return sensorHeight - distanceCm;
+  }
+
+  return distanceCm;
+}
+
+async function ensureDeviceExists(deviceId) {
+  const [rows] = await pool.execute('SELECT id FROM devices WHERE id = ? LIMIT 1', [deviceId]);
+  if (rows.length > 0) return;
+
+  await pool.execute(
+    `INSERT INTO devices (id, name, description, status)
+     VALUES (?, ?, ?, 'active')`,
+    [deviceId, `Device ${deviceId}`, 'Auto-created from MQTT subscriber']
+  );
+
+  console.log(`[MQTT] Device created automatically: ${deviceId}`);
+}
+
 /**
  * Save sensor data to database
  */
 async function saveSensorData(deviceId, data) {
   try {
-    const waterLevel = parseFloat(data.water_level);
+    const waterLevel = resolveWaterLevel(data);
+    const distanceCm = toNullableNumber(data.distance_cm);
+    const batteryLevel = toNullableNumber(data.battery_level);
+    const signalStrength = toNullableNumber(data.signal_strength);
     
-    if (isNaN(waterLevel)) {
-      console.error(`[MQTT] Invalid water_level from ${deviceId}:`, data.water_level);
+    if (waterLevel === null) {
+      console.error(`[MQTT] Invalid payload from ${deviceId}: water_level/distance_cm missing or invalid`);
       return false;
     }
 
-    const waterStatus = getWaterStatus(waterLevel);
+    await ensureDeviceExists(deviceId);
+
+    const statusMetric = resolveStatusMetric(data, waterLevel);
+    const waterStatus = getWaterStatus(statusMetric);
     
     const query = `
       INSERT INTO sensor_data (device_id, water_level, distance_cm, battery_level, signal_strength, water_status)
@@ -73,9 +126,9 @@ async function saveSensorData(deviceId, data) {
     const values = [
       deviceId,
       waterLevel,
-      data.distance_cm || null,
-      data.battery_level || null,
-      data.signal_strength || null,
+      distanceCm,
+      batteryLevel,
+      signalStrength,
       waterStatus
     ];
 
@@ -94,22 +147,16 @@ async function saveSensorData(deviceId, data) {
  */
 function handleMessage(topic, message) {
   try {
-    const deviceId = extractDeviceId(topic);
+    const payload = JSON.parse(message.toString());
+    const deviceIdFromTopic = extractDeviceId(topic);
+    const deviceId = payload.device_id || deviceIdFromTopic || MQTT_DEFAULT_DEVICE_ID;
     
     if (!deviceId) {
       console.warn(`[MQTT] Could not extract device_id from topic: ${topic}`);
       return;
     }
-
-    const payload = JSON.parse(message.toString());
     
     console.log(`[MQTT] Received from ${deviceId}:`, payload);
-
-    // Validate required fields
-    if (payload.water_level === undefined) {
-      console.error(`[MQTT] Missing water_level in payload from ${deviceId}`);
-      return;
-    }
 
     // Save to database
     saveSensorData(deviceId, payload);
@@ -134,14 +181,16 @@ function connect() {
 
   client.on('connect', () => {
     console.log('[MQTT] Connected to broker');
-    
-    // Subscribe to sensor data topic
-    client.subscribe(SENSOR_DATA_TOPIC, { qos: 1 }, (err) => {
-      if (err) {
-        console.error('[MQTT] Subscribe error:', err);
-      } else {
-        console.log(`[MQTT] Subscribed to: ${SENSOR_DATA_TOPIC}`);
-      }
+
+    const topics = [SENSOR_DATA_TOPIC, MQTT_SIMPLE_TOPIC];
+    topics.forEach((topic) => {
+      client.subscribe(topic, { qos: 1 }, (err) => {
+        if (err) {
+          console.error(`[MQTT] Subscribe error for ${topic}:`, err);
+        } else {
+          console.log(`[MQTT] Subscribed to: ${topic}`);
+        }
+      });
     });
   });
 

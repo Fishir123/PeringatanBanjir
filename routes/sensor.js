@@ -6,7 +6,7 @@ const db = require('../config/db');
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query(
-      'SELECT id, device_id, water_level, created_at FROM sensor_data ORDER BY created_at DESC LIMIT 500'
+      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data ORDER BY created_at DESC LIMIT 500'
     );
 
     res.json({
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 router.get('/latest', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT s1.id, s1.device_id, s1.water_level, s1.created_at
+      `SELECT s1.id, s1.device_id, s1.water_level, s1.water_status, s1.created_at
        FROM sensor_data s1
        INNER JOIN (
          SELECT device_id, MAX(created_at) AS max_created_at
@@ -52,7 +52,7 @@ router.get('/:device_id', async (req, res) => {
   try {
     const { device_id } = req.params;
     const [rows] = await db.query(
-      'SELECT id, device_id, water_level, created_at FROM sensor_data WHERE device_id = ? ORDER BY created_at DESC LIMIT 500',
+      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data WHERE device_id = ? ORDER BY created_at DESC LIMIT 500',
       [device_id]
     );
 
@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
     );
 
     const [insertedRows] = await db.query(
-      'SELECT id, device_id, water_level, created_at FROM sensor_data WHERE id = ?',
+      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data WHERE id = ?',
       [result.insertId]
     );
 

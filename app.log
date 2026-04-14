@@ -1,6 +1,312 @@
-nohup: ignoring input
 
 > floodguard-api@0.0.0 start
 > node ./bin/www
 
-Port 3000 is already in use
+[MQTT] Connecting to broker: mqtt://192.168.1.20:1883
+[MQTT] Connected to broker
+[MQTT] Subscribed to: floodguard/sensor/+/data
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.27 }
+[MQTT] Subscribed to: sensor/ultrasonic
+[MQTT] Data saved: esp32-01 - water_level: 301.27cm (danger)
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.34 }
+[MQTT] Data saved: esp32-01 - water_level: 301.34cm (danger)
+[0mGET /api/sensor-data [32m200 [0m9.062 ms - 33888[0m
+[0mGET /api/sensor-data [36m304 [0m6.421 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m2.967 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.29 }
+[MQTT] Data saved: esp32-01 - water_level: 301.29cm (danger)
+[0mGET /api/sensor-data [32m200 [0m7.778 ms - 34009[0m
+[0mGET /api/sensor-data [36m304 [0m6.775 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m2.297 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.69 }
+[MQTT] Data saved: esp32-01 - water_level: 301.69cm (danger)
+[0mGET /api/sensor-data [32m200 [0m10.405 ms - 34130[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 50.66 }
+[MQTT] Data saved: esp32-01 - water_level: 50.66cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.168 ms - 34250[0m
+[0mGET /api/sensor-data [36m304 [0m4.628 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.27 }
+[MQTT] Data saved: esp32-01 - water_level: 301.27cm (danger)
+[0mGET /api/sensor-data [32m200 [0m7.722 ms - 34371[0m
+[0mGET /api/sensor-data [36m304 [0m8.875 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m8.437 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.26 }
+[MQTT] Data saved: esp32-01 - water_level: 301.26cm (danger)
+[0mGET /api/sensor-data [32m200 [0m7.488 ms - 34492[0m
+[0mGET /api/sensor-data [36m304 [0m2.479 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m2.710 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.75 }
+[MQTT] Data saved: esp32-01 - water_level: 301.75cm (danger)
+[0mGET /api/sensor-data [32m200 [0m8.528 ms - 34613[0m
+[0mGET /api/sensor-data [36m304 [0m3.119 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m2.618 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.34 }
+[MQTT] Data saved: esp32-01 - water_level: 301.34cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.443 ms - 34734[0m
+[0mGET /api/sensor-data [36m304 [0m7.410 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m3.738 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.75 }
+[MQTT] Data saved: esp32-01 - water_level: 301.75cm (danger)
+[0mGET /api/sensor-data [32m200 [0m7.655 ms - 34855[0m
+[0mGET /api/sensor-data [36m304 [0m7.495 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m8.377 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.36 }
+[MQTT] Data saved: esp32-01 - water_level: 301.36cm (danger)
+[0mGET /api/sensor-data [32m200 [0m5.065 ms - 34976[0m
+[0mGET /api/sensor-data [36m304 [0m2.906 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m2.917 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.36 }
+[MQTT] Data saved: esp32-01 - water_level: 301.36cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.195 ms - 35097[0m
+[0mGET /api/sensor-data [36m304 [0m8.381 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m9.740 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.36 }
+[MQTT] Data saved: esp32-01 - water_level: 301.36cm (danger)
+[0mGET /api/sensor-data [32m200 [0m2.804 ms - 35218[0m
+[0mGET /api/sensor-data [36m304 [0m2.942 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m4.407 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.33 }
+[MQTT] Data saved: esp32-01 - water_level: 301.33cm (danger)
+[0mGET /api/sensor-data [32m200 [0m7.925 ms - 35339[0m
+[0mGET /api/sensor-data [36m304 [0m8.495 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m4.087 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.34 }
+[MQTT] Data saved: esp32-01 - water_level: 301.34cm (danger)
+[0mGET /api/sensor-data [32m200 [0m8.773 ms - 35460[0m
+[0mGET /api/sensor-data [36m304 [0m2.874 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m3.780 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.26 }
+[MQTT] Data saved: esp32-01 - water_level: 301.26cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.238 ms - 35581[0m
+[0mGET /api/sensor-data [36m304 [0m2.962 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.29 }
+[MQTT] Data saved: esp32-01 - water_level: 301.29cm (danger)
+[0mGET /api/sensor-data [32m200 [0m10.402 ms - 35702[0m
+[0mGET /api/sensor-data [36m304 [0m5.989 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m3.376 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.29 }
+[MQTT] Data saved: esp32-01 - water_level: 301.29cm (danger)
+[0mGET /api/sensor-data [32m200 [0m8.252 ms - 35823[0m
+[0mGET /api/sensor-data [36m304 [0m8.309 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m3.176 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.34 }
+[MQTT] Data saved: esp32-01 - water_level: 301.34cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.271 ms - 35944[0m
+[0mGET /api/sensor-data [36m304 [0m2.939 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m8.086 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.34 }
+[MQTT] Data saved: esp32-01 - water_level: 301.34cm (danger)
+[0mGET /api/sensor-data [32m200 [0m8.259 ms - 36065[0m
+[0mGET /api/sensor-data [36m304 [0m3.192 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m3.859 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.27 }
+[MQTT] Data saved: esp32-01 - water_level: 301.27cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.701 ms - 36186[0m
+[0mGET /api/sensor-data [36m304 [0m2.819 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m3.269 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.69 }
+[MQTT] Data saved: esp32-01 - water_level: 301.69cm (danger)
+[0mGET /api/sensor-data [32m200 [0m7.375 ms - 36307[0m
+[0mGET /api/sensor-data [36m304 [0m4.378 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m9.210 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.22 }
+[MQTT] Data saved: esp32-01 - water_level: 301.22cm (danger)
+[0mGET /api/sensor-data [32m200 [0m3.178 ms - 36428[0m
+[0mGET /api/sensor-data [36m304 [0m8.692 ms - -[0m
+[0mGET /api/sensor-data [36m304 [0m7.323 ms - -[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.29 }
+[MQTT] Data saved: esp32-01 - water_level: 301.29cm (danger)
+[0mGET / [36m304 [0m3.243 ms - -[0m
+[0mGET /main.js [32m200 [0m2.141 ms - 2712[0m
+[0mGET /stylesheets/style.css [36m304 [0m1.323 ms - -[0m
+[0mGET /api/sensor-data?_=1776106866721 [32m200 [0m2.533 ms - 36549[0m
+[0mGET /api/sensor-data?_=1776106867722 [32m200 [0m5.492 ms - 36549[0m
+[0mGET /api/sensor-data?_=1776106868722 [32m200 [0m7.635 ms - 36549[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 301.27 }
+[MQTT] Data saved: esp32-01 - water_level: 301.27cm (danger)
+[0mGET /api/sensor-data?_=1776106869819 [32m200 [0m3.020 ms - 36670[0m
+[0mGET /api/sensor-data?_=1776106870819 [32m200 [0m8.115 ms - 36670[0m
+[0mGET /api/sensor-data?_=1776106871826 [32m200 [0m8.061 ms - 36670[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 56.15 }
+[MQTT] Data saved: esp32-01 - water_level: 56.15cm (danger)
+[0mGET /api/sensor-data?_=1776106872827 [32m200 [0m2.939 ms - 36790[0m
+[0mGET /api/sensor-data?_=1776106873893 [32m200 [0m10.489 ms - 36790[0m
+[0mGET /api/sensor-data?_=1776106874893 [32m200 [0m2.895 ms - 36790[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 56.58 }
+[MQTT] Data saved: esp32-01 - water_level: 56.58cm (danger)
+[0mGET /api/sensor-data?_=1776106875897 [32m200 [0m2.270 ms - 36910[0m
+[0mGET /api/sensor-data?_=1776106876898 [32m200 [0m5.748 ms - 36910[0m
+[0mGET /api/sensor-data?_=1776106877898 [32m200 [0m8.129 ms - 36910[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 4.92 }
+[MQTT] Data saved: esp32-01 - water_level: 4.92cm (safe)
+[0mGET /api/sensor-data?_=1776106878903 [32m200 [0m7.763 ms - 37027[0m
+[0mGET /api/sensor-data?_=1776106879999 [32m200 [0m3.117 ms - 37027[0m
+[0mGET /api/sensor-data?_=1776106881000 [32m200 [0m2.314 ms - 37027[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 23.02 }
+[MQTT] Data saved: esp32-01 - water_level: 23.02cm (safe)
+[0mGET /api/sensor-data?_=1776106882006 [32m200 [0m2.858 ms - 37145[0m
+[0mGET /api/sensor-data?_=1776106883067 [32m200 [0m4.283 ms - 37145[0m
+[0mGET /api/sensor-data?_=1776106884068 [32m200 [0m4.350 ms - 37145[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 38.66 }
+[MQTT] Data saved: esp32-01 - water_level: 38.66cm (warning)
+[0mGET /api/sensor-data?_=1776106885154 [32m200 [0m3.061 ms - 37266[0m
+[0mGET /api/sensor-data?_=1776106886227 [32m200 [0m3.630 ms - 37266[0m
+[0mGET /api/sensor-data?_=1776106887227 [32m200 [0m5.777 ms - 37266[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 49.63 }
+[MQTT] Data saved: esp32-01 - water_level: 49.63cm (warning)
+[0mGET /api/sensor-data?_=1776106888227 [32m200 [0m2.927 ms - 37387[0m
+[0mGET /api/sensor-data?_=1776106889289 [32m200 [0m3.172 ms - 37387[0m
+[0mGET /api/sensor-data?_=1776106890290 [32m200 [0m3.191 ms - 37387[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 81.26 }
+[MQTT] Data saved: esp32-01 - water_level: 81.26cm (danger)
+[0mGET /api/sensor-data?_=1776106891290 [32m200 [0m3.302 ms - 37507[0m
+[0mGET /api/sensor-data?_=1776106892357 [32m200 [0m3.177 ms - 37507[0m
+[0mGET /api/sensor-data?_=1776106893357 [32m200 [0m4.915 ms - 37507[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106894358 [32m200 [0m3.544 ms - 37628[0m
+[0mGET /api/sensor-data?_=1776106895409 [32m200 [0m8.014 ms - 37628[0m
+[0mGET /api/sensor-data?_=1776106896409 [32m200 [0m9.188 ms - 37628[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106897409 [32m200 [0m2.392 ms - 37749[0m
+[0mGET /api/sensor-data?_=1776106898493 [32m200 [0m9.216 ms - 37749[0m
+[0mGET /api/sensor-data?_=1776106899493 [32m200 [0m9.035 ms - 37749[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106900493 [32m200 [0m4.623 ms - 37870[0m
+[0mGET /api/sensor-data?_=1776106901583 [32m200 [0m2.303 ms - 37870[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106902895 [32m200 [0m4.766 ms - 37991[0m
+[0mGET /api/sensor-data?_=1776106903897 [32m200 [0m4.106 ms - 37991[0m
+[0mGET /api/sensor-data?_=1776106904927 [32m200 [0m2.640 ms - 37991[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106905973 [32m200 [0m2.581 ms - 38112[0m
+[0mGET /api/sensor-data?_=1776106906974 [32m200 [0m8.711 ms - 38112[0m
+[0mGET /api/sensor-data?_=1776106907975 [32m200 [0m5.665 ms - 38112[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106908976 [32m200 [0m3.199 ms - 38233[0m
+[0mGET /api/sensor-data?_=1776106910003 [32m200 [0m2.780 ms - 38233[0m
+[0mGET /api/sensor-data?_=1776106911003 [32m200 [0m8.186 ms - 38233[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106912004 [32m200 [0m5.009 ms - 38354[0m
+[0mGET /api/sensor-data?_=1776106913005 [32m200 [0m8.527 ms - 38354[0m
+[0mGET /api/sensor-data?_=1776106914006 [32m200 [0m2.034 ms - 38354[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106915006 [32m200 [0m7.644 ms - 38475[0m
+[0mGET /api/sensor-data?_=1776106916111 [32m200 [0m4.551 ms - 38475[0m
+[0mGET /api/sensor-data?_=1776106917112 [32m200 [0m7.652 ms - 38475[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106918237 [32m200 [0m3.467 ms - 38596[0m
+[0mGET /api/sensor-data?_=1776106919238 [32m200 [0m2.802 ms - 38596[0m
+[0mGET /api/sensor-data?_=1776106920239 [32m200 [0m1.956 ms - 38596[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.17 }
+[MQTT] Data saved: esp32-01 - water_level: 30.17cm (warning)
+[0mGET /api/sensor-data?_=1776106921239 [32m200 [0m3.029 ms - 38717[0m
+[0mGET /api/sensor-data?_=1776106922239 [32m200 [0m8.012 ms - 38717[0m
+[0mGET /api/sensor-data?_=1776106923240 [32m200 [0m2.234 ms - 38717[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 30.18 }
+[MQTT] Data saved: esp32-01 - water_level: 30.18cm (warning)
+[0mGET /api/sensor-data?_=1776106924241 [32m200 [0m8.771 ms - 38838[0m
+[0mGET /api/sensor-data?_=1776106925242 [32m200 [0m2.630 ms - 38838[0m
+[0mGET /api/sensor-data?_=1776106926297 [32m200 [0m4.417 ms - 38838[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 28.85 }
+[MQTT] Data saved: esp32-01 - water_level: 28.85cm (safe)
+[0mGET /api/sensor-data?_=1776106927298 [32m200 [0m2.056 ms - 38956[0m
+[0mGET /api/sensor-data?_=1776106928298 [32m200 [0m7.756 ms - 38956[0m
+[0mGET /api/sensor-data?_=1776106929300 [32m200 [0m2.472 ms - 38956[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 29.65 }
+[MQTT] Data saved: esp32-01 - water_level: 29.65cm (safe)
+[0mGET /api/sensor-data?_=1776106930301 [32m200 [0m8.060 ms - 39074[0m
+[0mGET /api/sensor-data?_=1776106931407 [32m200 [0m6.135 ms - 39074[0m
+[0mGET /api/sensor-data?_=1776106932408 [32m200 [0m8.254 ms - 39074[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 28.83 }
+[MQTT] Data saved: esp32-01 - water_level: 28.83cm (safe)
+[0mGET /api/sensor-data?_=1776106933410 [32m200 [0m3.362 ms - 39192[0m
+[0mGET /api/sensor-data?_=1776106934561 [32m200 [0m2.658 ms - 39192[0m
+[0mGET /api/sensor-data?_=1776106935562 [32m200 [0m4.472 ms - 39192[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 29.65 }
+[MQTT] Data saved: esp32-01 - water_level: 29.65cm (safe)
+[0mGET /api/sensor-data?_=1776106936562 [32m200 [0m2.453 ms - 39310[0m
+[0mGET /api/sensor-data?_=1776106937563 [32m200 [0m7.946 ms - 39310[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 28.85 }
+[MQTT] Data saved: esp32-01 - water_level: 28.85cm (safe)
+[0mGET /api/sensor-data?_=1776106939221 [32m200 [0m4.752 ms - 39428[0m
+[0mGET /api/sensor-data?_=1776106940331 [32m200 [0m5.731 ms - 39428[0m
+[0mGET /api/sensor-data?_=1776106941383 [32m200 [0m3.166 ms - 39428[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 29.91 }
+[MQTT] Data saved: esp32-01 - water_level: 29.91cm (safe)
+[0mGET /api/sensor-data?_=1776106942441 [32m200 [0m4.134 ms - 39546[0m
+[0mGET /api/sensor-data?_=1776106944462 [32m200 [0m9.858 ms - 39546[0m
+[MQTT] Received from esp32-01: { device_id: 'esp32-01', distance_cm: 56.32 }
+[MQTT] Data saved: esp32-01 - water_level: 56.32cm (danger)
+[0mGET /api/sensor-data?_=1776106945464 [32m200 [0m7.703 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106946487 [32m200 [0m2.262 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106947489 [32m200 [0m8.736 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106948490 [32m200 [0m7.721 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106949491 [32m200 [0m7.665 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106950515 [32m200 [0m2.398 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106951516 [32m200 [0m7.758 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106952518 [32m200 [0m7.790 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106953590 [32m200 [0m7.711 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106954591 [32m200 [0m7.716 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106955593 [32m200 [0m8.313 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106956654 [32m200 [0m7.697 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106957656 [32m200 [0m7.660 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106958750 [32m200 [0m2.258 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106959751 [32m200 [0m7.646 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106960752 [32m200 [0m3.273 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106961753 [32m200 [0m7.769 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106962754 [32m200 [0m8.086 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106963827 [32m200 [0m8.168 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106964829 [32m200 [0m7.633 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106965830 [32m200 [0m2.777 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106966886 [32m200 [0m8.410 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106967887 [32m200 [0m9.278 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106968889 [32m200 [0m4.007 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106969890 [32m200 [0m9.393 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106970892 [32m200 [0m7.728 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106971960 [32m200 [0m7.656 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106972962 [32m200 [0m7.769 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106974032 [32m200 [0m7.826 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106975062 [32m200 [0m2.267 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106976096 [32m200 [0m7.663 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106977098 [32m200 [0m7.664 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106978100 [32m200 [0m3.547 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106979173 [32m200 [0m7.007 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106980174 [32m200 [0m8.180 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106981247 [32m200 [0m2.261 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106982309 [32m200 [0m8.892 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106983310 [32m200 [0m2.384 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106984311 [32m200 [0m8.259 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106985312 [32m200 [0m3.974 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106986313 [32m200 [0m2.859 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106987372 [32m200 [0m4.986 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106988373 [32m200 [0m2.493 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106989374 [32m200 [0m8.360 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106990376 [32m200 [0m3.274 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106991377 [32m200 [0m8.398 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106992483 [32m200 [0m6.417 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106993484 [32m200 [0m3.032 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106994484 [32m200 [0m2.421 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106995485 [32m200 [0m8.205 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106997526 [32m200 [0m8.421 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106998526 [32m200 [0m2.564 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776106999527 [32m200 [0m7.678 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107000627 [32m200 [0m4.369 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107001627 [32m200 [0m3.138 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107002628 [32m200 [0m8.368 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107003630 [32m200 [0m7.775 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107004631 [32m200 [0m8.738 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107005633 [32m200 [0m9.472 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107006634 [32m200 [0m7.960 ms - 39666[0m
+[0mGET /api/sensor-data?_=1776107007685 [32m200 [0m2.314 ms - 39666[0m
+
+Shutting down...
+[MQTT] Disconnected from broker

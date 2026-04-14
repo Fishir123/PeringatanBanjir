@@ -9,9 +9,24 @@ function formatDate(value) {
 }
 
 function getFloodStatus(level) {
-  if (level >= 120) return { label: 'Bahaya', className: 'danger' };
-  if (level >= 80) return { label: 'Waspada', className: 'warning' };
+  if (level >= 50) return { label: 'Bahaya', className: 'danger' };
+  if (level >= 30) return { label: 'Waspada', className: 'warning' };
   return { label: 'Aman', className: 'safe' };
+}
+
+function getFloodStatusFromServer(waterStatus, level) {
+  const map = {
+    safe: { label: 'Aman', className: 'safe' },
+    warning: { label: 'Waspada', className: 'warning' },
+    danger: { label: 'Bahaya', className: 'danger' },
+    critical: { label: 'Kritis', className: 'danger' }
+  };
+
+  if (waterStatus && map[waterStatus] && (Number.isNaN(level) || level < 50)) {
+    return map[waterStatus];
+  }
+
+  return getFloodStatus(level);
 }
 
 function renderTable(data) {
@@ -23,7 +38,7 @@ function renderTable(data) {
   }
 
   data.forEach((item) => {
-    const status = getFloodStatus(Number(item.water_level));
+    const status = getFloodStatusFromServer(item.water_status, Number(item.water_level));
     const row = document.createElement('tr');
 
     row.innerHTML = `
@@ -41,7 +56,9 @@ function renderTable(data) {
 async function fetchData(endpoint = '') {
   try {
     statusText.textContent = 'Memuat data...';
-    const response = await fetch(`${API_BASE}${endpoint}`);
+    const response = await fetch(`${API_BASE}${endpoint}?_=${Date.now()}`, {
+      cache: 'no-store'
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -72,5 +89,5 @@ document.getElementById('btnByDevice').addEventListener('click', () => {
   fetchData(`/${encodeURIComponent(deviceId)}`);
 });
 
-fetchData('/latest');
-setInterval(() => fetchData('/latest'), 10000);
+fetchData('');
+setInterval(() => fetchData(''), 1000);
