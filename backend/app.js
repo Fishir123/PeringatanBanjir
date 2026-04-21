@@ -7,6 +7,7 @@ var cors = require('cors');
 
 var usersRouter = require('./routes/users');
 var sensorRouter = require('./routes/sensor');
+var externalRouter = require('./routes/external');
 
 // MQTT Subscriber for ESP32 sensor data
 var mqttSubscriber = require('./mqtt/subscriber');
@@ -23,6 +24,7 @@ app.use(express.static(frontendDistPath));
 
 app.use('/users', usersRouter);
 app.use('/api/sensor-data', sensorRouter);
+app.use('/api/external', externalRouter);
 
 app.get('*', function(req, res, next) {
   if (req.path.startsWith('/api/') || req.path.startsWith('/users')) {
