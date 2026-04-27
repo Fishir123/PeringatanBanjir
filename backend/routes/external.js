@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../config/db');
 
 const {
   getIntegrationConfig,
   saveIntegrationConfig,
-  fetchWeatherData,
-  fetchTideData,
+  fetchWeatherDataWithCooldown,
+  fetchTideDataWithCooldown,
   toPublicConfig,
 } = require('../services/externalDataService');
 
@@ -30,8 +31,7 @@ router.put('/config', async (req, res) => {
     const nextConfig = {
       weatherApiBaseUrl: req.body.weatherApiBaseUrl,
       weatherApiKey: req.body.weatherApiKey,
-      weatherLocationLat: req.body.weatherLocationLat,
-      weatherLocationLon: req.body.weatherLocationLon,
+      weatherBmkgAdm4: req.body.weatherBmkgAdm4,
       tideApiBaseUrl: req.body.tideApiBaseUrl,
       tideApiKey: req.body.tideApiKey,
       tideStationCode: req.body.tideStationCode,
@@ -54,7 +54,8 @@ router.put('/config', async (req, res) => {
 router.post('/weather/fetch', async (req, res) => {
   try {
     const config = await getIntegrationConfig();
-    const result = await fetchWeatherData(config);
+    const force = String(req.query.force || '').toLowerCase() === 'true';
+    const result = await fetchWeatherDataWithCooldown(config, { force });
 
     res.json({
       message: 'Data cuaca berhasil diambil',
@@ -68,10 +69,64 @@ router.post('/weather/fetch', async (req, res) => {
   }
 });
 
+router.get('/weather/latest', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, rainfall_mm, humidity, temperature, wind_speed, wind_direction,
+              weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
+              precipitation_mm, rain_mm, precipitation_probability, precipitation_sum_mm, precipitation_hours,
+              precipitation_probability_max, open_meteo_lat, open_meteo_lon, open_meteo_timezone,
+              source, location_code, recorded_at
+       FROM weather_data
+       ORDER BY recorded_at DESC
+       LIMIT 1`
+    );
+
+    res.json({
+      message: 'Data cuaca terbaru berhasil diambil',
+      data: rows[0] || null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil data cuaca terbaru',
+      error: error.message,
+    });
+  }
+});
+
+router.get('/weather/history', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 24, 100);
+
+    const [rows] = await db.query(
+      `SELECT id, rainfall_mm, humidity, temperature, wind_speed, wind_direction,
+              weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
+              precipitation_mm, rain_mm, precipitation_probability, precipitation_sum_mm, precipitation_hours,
+              precipitation_probability_max, open_meteo_lat, open_meteo_lon, open_meteo_timezone,
+              source, location_code, recorded_at
+       FROM weather_data
+       ORDER BY recorded_at DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    res.json({
+      message: 'Riwayat data cuaca berhasil diambil',
+      data: rows,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil riwayat data cuaca',
+      error: error.message,
+    });
+  }
+});
+
 router.post('/tide/fetch', async (req, res) => {
   try {
     const config = await getIntegrationConfig();
-    const result = await fetchTideData(config);
+    const force = String(req.query.force || '').toLowerCase() === 'true';
+    const result = await fetchTideDataWithCooldown(config, { force });
 
     res.json({
       message: 'Data pasang surut berhasil diambil',
@@ -85,13 +140,39 @@ router.post('/tide/fetch', async (req, res) => {
   }
 });
 
+router.get('/tide/latest', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, tide_level_cm, tide_status,
+              high_tide_time, high_tide_level_cm,
+              low_tide_time, low_tide_level_cm,
+              prediction_date, wave_height_m, wave_direction_deg, wave_period_s,
+              marine_lat, marine_lon, marine_timezone, source, station_code, recorded_at
+       FROM tidal_data
+       ORDER BY recorded_at DESC
+       LIMIT 1`
+    );
+
+    res.json({
+      message: 'Data pasang surut terbaru berhasil diambil',
+      data: rows[0] || null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil data pasang surut terbaru',
+      error: error.message,
+    });
+  }
+});
+
 router.post('/fetch-all', async (req, res) => {
   try {
     const config = await getIntegrationConfig();
+    const force = String(req.query.force || '').toLowerCase() === 'true';
 
     const [weather, tide] = await Promise.allSettled([
-      fetchWeatherData(config),
-      fetchTideData(config),
+      fetchWeatherDataWithCooldown(config, { force }),
+      fetchTideDataWithCooldown(config, { force }),
     ]);
 
     res.json({

@@ -7,8 +7,8 @@ import { statusLabels } from '@/shared/constants/status';
 const badgeClass = {
     safe: 'status-badge-safe',
     alert: 'status-badge-alert',
-    warning: 'status-badge-warning',
     danger: 'status-badge-danger',
+  warning: 'status-badge-alert',
 };
 const NotificationsPage = () => {
   const historyQuery = useSensorHistoryQuery();
@@ -71,7 +71,7 @@ const NotificationsPage = () => {
           <div className="space-y-3">
             {notifications.map(n => (<div key={n.id} className={`p-3 rounded-lg border ${!n.read ? 'bg-muted/50 border-primary/30' : 'border-border/50'}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass[n.type]}`}>{statusLabels[n.type]}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass[n.type] || 'status-badge-alert'}`}>{statusLabels[n.type] || statusLabels.alert}</span>
                   <span className="text-[10px] text-muted-foreground">{new Date(n.timestamp).toLocaleString('id-ID')}</span>
                   {!n.read && <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow"/>}
                 </div>

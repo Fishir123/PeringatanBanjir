@@ -1,7 +1,6 @@
 const statusLabels = {
     safe: 'Aman',
     alert: 'Siaga',
-    warning: 'Waspada',
     danger: 'Bahaya',
 };
 export { statusLabels };
@@ -12,7 +11,7 @@ function getStatus(waterLevel) {
     if (waterLevel <= 3)
         return 'danger';
     if (waterLevel <= 10)
-        return 'warning';
+        return 'alert';
     return 'safe';
 }
 function generateTimestamps(count, intervalMinutes = 60) {
@@ -67,10 +66,10 @@ export const users = [
 ];
 export const notifications = [
     { id: 'NOT-001', title: 'Peringatan Banjir!', message: 'Tinggi muka air di Sensor Hulu telah melampaui batas bahaya (180cm).', type: 'danger', timestamp: new Date().toISOString(), read: false },
-    { id: 'NOT-002', title: 'Siaga Banjir', message: 'Curah hujan meningkat. Tinggi air mendekati level waspada.', type: 'warning', timestamp: new Date(Date.now() - 1800000).toISOString(), read: false },
+    { id: 'NOT-002', title: 'Siaga Banjir', message: 'Curah hujan meningkat. Tinggi air mendekati level siaga.', type: 'alert', timestamp: new Date(Date.now() - 1800000).toISOString(), read: false },
     { id: 'NOT-003', title: 'Perangkat Offline', message: 'Sensor Bendungan (DEV-003) tidak mengirim data selama 3 jam.', type: 'alert', timestamp: new Date(Date.now() - 3600000).toISOString(), read: true },
     { id: 'NOT-004', title: 'Status Normal', message: 'Semua sensor menunjukkan level air dalam batas aman.', type: 'safe', timestamp: new Date(Date.now() - 7200000).toISOString(), read: true },
-    { id: 'NOT-005', title: 'Waspada Hujan Lebat', message: 'BMKG memprediksi hujan lebat dalam 6 jam ke depan.', type: 'warning', timestamp: new Date(Date.now() - 10800000).toISOString(), read: true },
+    { id: 'NOT-005', title: 'Siaga Hujan Lebat', message: 'BMKG memprediksi hujan lebat dalam 6 jam ke depan.', type: 'alert', timestamp: new Date(Date.now() - 10800000).toISOString(), read: true },
 ];
 export const predictions = timestamps24h.map((ts, i) => {
     const actual = rand(20, 180);
@@ -84,17 +83,16 @@ export const predictions = timestamps24h.map((ts, i) => {
     };
 });
 export const confusionMatrix = {
-    labels: ['Aman', 'Siaga', 'Waspada', 'Bahaya'],
+    labels: ['Aman', 'Siaga', 'Bahaya'],
     data: [
-        [45, 3, 1, 0],
-        [2, 38, 4, 1],
-        [0, 5, 32, 3],
-        [0, 1, 2, 28],
+        [47, 4, 0],
+        [3, 41, 2],
+        [1, 4, 30],
     ],
 };
 // Current status
 export const currentStatus = {
-    status: 'warning',
+    status: 'alert',
     waterLevel: 142.5,
     rainfall: 45.2,
     devicesOnline: devices.filter(d => d.status === 'online').length,

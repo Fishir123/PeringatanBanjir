@@ -5,8 +5,8 @@ import Swal from 'sweetalert2';
 const badgeClass = {
     safe: 'status-badge-safe',
     alert: 'status-badge-alert',
-    warning: 'status-badge-warning',
     danger: 'status-badge-danger',
+  warning: 'status-badge-alert',
 };
 const PredictionPage = () => {
     const latest = predictions[predictions.length - 1];
@@ -46,8 +46,8 @@ const PredictionPage = () => {
           <BrainCircuit className="w-8 h-8 text-primary mx-auto mb-2"/>
           <p className="text-xs text-muted-foreground">Prediksi Terbaru</p>
           <p className="text-2xl font-bold text-card-foreground">{latest.predicted.toFixed(1)} cm</p>
-          <span className={`inline-block mt-2 px-2 py-0.5 rounded text-[11px] font-semibold ${badgeClass[latest.status]}`}>
-            {statusLabels[latest.status]}
+          <span className={`inline-block mt-2 px-2 py-0.5 rounded text-[11px] font-semibold ${badgeClass[latest.status] || 'status-badge-alert'}`}>
+            {statusLabels[latest.status] || statusLabels.alert}
           </span>
         </div>
         <div className="flood-card text-center">
