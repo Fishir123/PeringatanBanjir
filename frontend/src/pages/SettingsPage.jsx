@@ -8,13 +8,13 @@ import {
 } from '@/features/sensor/api/externalApi';
 
 const initialConfig = {
-  weatherApiBaseUrl: '',
+  weatherApiBaseUrl: 'https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.29.13.2007',
   weatherApiKey: '',
-  weatherLocationLat: '',
-  weatherLocationLon: '',
+  weatherLocationLat: '-7.0167',
+  weatherLocationLon: '113.8667',
   tideApiBaseUrl: '',
   tideApiKey: '',
-  tideStationCode: '',
+  tideStationCode: 'sumenep',
 };
 
 const SettingsPage = () => {
@@ -166,7 +166,7 @@ const SettingsPage = () => {
                   name="weatherLocationLat"
                   value={config.weatherLocationLat}
                   onChange={handleConfigChange}
-                  placeholder="-7.0410"
+                placeholder="-7.0410"
                   className="w-full mt-1 px-3 py-2 rounded-lg bg-muted border border-border text-card-foreground text-sm focus:ring-2 focus:ring-primary/30 focus:outline-none"
                   disabled={loadingConfig || isBusy}
                 />
@@ -177,7 +177,7 @@ const SettingsPage = () => {
                   name="weatherLocationLon"
                   value={config.weatherLocationLon}
                   onChange={handleConfigChange}
-                  placeholder="113.8665"
+                placeholder="113.8665"
                   className="w-full mt-1 px-3 py-2 rounded-lg bg-muted border border-border text-card-foreground text-sm focus:ring-2 focus:ring-primary/30 focus:outline-none"
                   disabled={loadingConfig || isBusy}
                 />

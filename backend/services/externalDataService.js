@@ -78,6 +78,68 @@ function normalizeToCm(value, unitHint = '') {
   return Number(numericValue.toFixed(2));
 }
 
+function flattenBmkgCuacaEntries(payload) {
+  const allEntries = [];
+
+  const groups = Array.isArray(payload?.data) ? payload.data : [];
+
+  for (const group of groups) {
+    const cuacaByDay = Array.isArray(group?.cuaca) ? group.cuaca : [];
+    for (const dayEntries of cuacaByDay) {
+      if (!Array.isArray(dayEntries)) continue;
+
+      for (const entry of dayEntries) {
+        allEntries.push({
+          entry,
+          lokasi: group?.lokasi || payload?.lokasi || null,
+        });
+      }
+    }
+  }
+
+  return allEntries;
+}
+
+function pickBestBmkgEntry(payload) {
+  const allEntries = flattenBmkgCuacaEntries(payload);
+  if (allEntries.length === 0) return null;
+
+  const now = Date.now();
+
+  const withTs = allEntries
+    .map((item) => {
+      const ts = Date.parse(item?.entry?.local_datetime || item?.entry?.datetime || '');
+      return {
+        ...item,
+        ts: Number.isFinite(ts) ? ts : null,
+      };
+    })
+    .sort((a, b) => {
+      if (a.ts == null && b.ts == null) return 0;
+      if (a.ts == null) return 1;
+      if (b.ts == null) return -1;
+      return a.ts - b.ts;
+    });
+
+  const nearestFuture = withTs.find((item) => item.ts != null && item.ts >= now);
+  if (nearestFuture) return nearestFuture;
+
+  const latestPast = [...withTs].reverse().find((item) => item.ts != null);
+  if (latestPast) return latestPast;
+
+  return withTs[0] || null;
+}
+
+function getLocationCodeFromUrl(baseUrl) {
+  try {
+    if (!baseUrl) return null;
+    const url = new URL(baseUrl);
+    return url.searchParams.get('adm4') || url.searchParams.get('adm3') || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 function detectApiKeyParam(url) {
   const hostname = url.hostname.toLowerCase();
 
@@ -187,6 +249,44 @@ async function saveIntegrationConfig(inputConfig = {}) {
 }
 
 function parseWeatherPayload(payload, config) {
+  const bmkgSelection = pickBestBmkgEntry(payload);
+
+  if (bmkgSelection?.entry) {
+    const bmkgEntry = bmkgSelection.entry;
+    const parsedDate = new Date(bmkgEntry.local_datetime || bmkgEntry.datetime || Date.now());
+    const isValidDate = !Number.isNaN(parsedDate.getTime());
+
+    const rainfallMm = toNumber(bmkgEntry.tp) ?? toNumber(bmkgEntry.rainfall_mm) ?? 0;
+    const humidity = toNumber(bmkgEntry.hu) ?? toNumber(bmkgEntry.humidity) ?? null;
+    const temperature = toNumber(bmkgEntry.t) ?? toNumber(bmkgEntry.temperature) ?? null;
+    const windSpeedKmh = toNumber(bmkgEntry.ws) ?? toNumber(bmkgEntry.wind_speed) ?? null;
+
+    const windDirection =
+      bmkgEntry.wd ||
+      bmkgEntry.wind_direction ||
+      inferWindDirection(toNumber(bmkgEntry.wd_deg) ?? toNumber(bmkgEntry.wind_deg));
+
+    return {
+      rainfallMm: Number(rainfallMm.toFixed(2)),
+      humidity,
+      temperature,
+      windSpeedKmh,
+      windDirection,
+      weatherCode: bmkgEntry.weather == null ? null : String(bmkgEntry.weather),
+      weatherDesc: bmkgEntry.weather_desc || bmkgEntry.weather_desc_en || null,
+      forecastDate: (isValidDate ? parsedDate : new Date()).toISOString().slice(0, 10),
+      forecastHour: isValidDate ? parsedDate.getHours() : new Date().getHours(),
+      rainIntensity: inferRainIntensity(rainfallMm),
+      source: 'BMKG',
+      locationCode:
+        bmkgSelection?.lokasi?.adm4 ||
+        bmkgSelection?.lokasi?.adm3 ||
+        getLocationCodeFromUrl(config.weatherApiBaseUrl) ||
+        `${config.weatherLocationLat || ''},${config.weatherLocationLon || ''}`.replace(/^,|,$/g, '') ||
+        null,
+    };
+  }
+
   const now = new Date();
 
   const weatherCode =
