@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS sensor_data (
   signal_strength TINYINT,                  -- Kekuatan sinyal WiFi/LoRa (dBm)
   
   -- Status ketinggian air saat pengukuran
-  water_status ENUM('safe', 'warning', 'danger', 'critical') DEFAULT 'safe',
+  water_status ENUM('safe', 'alert', 'danger') DEFAULT 'safe',
   
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -128,9 +128,21 @@ CREATE TABLE IF NOT EXISTS weather_data (
   -- Waktu data
   forecast_date DATE NOT NULL,
   forecast_hour TINYINT UNSIGNED,           -- Jam prediksi (0-23)
+  rain_duration_hours DECIMAL(5, 2),        -- Durasi hujan estimasi BMKG (jam)
   
   -- Intensitas hujan
   rain_intensity ENUM('none', 'light', 'moderate', 'heavy', 'very_heavy') DEFAULT 'none',
+
+  -- Open-Meteo fields (opsional)
+  precipitation_mm DECIMAL(10, 2),         -- Curah hujan current (mm)
+  rain_mm DECIMAL(10, 2),                  -- Hujan current (mm)
+  precipitation_probability TINYINT UNSIGNED, -- Probabilitas hujan (%)
+  precipitation_sum_mm DECIMAL(10, 2),     -- Total hujan harian (mm)
+  precipitation_hours DECIMAL(5, 2),       -- Durasi hujan harian (jam)
+  precipitation_probability_max TINYINT UNSIGNED, -- Probabilitas hujan maksimum harian (%)
+  open_meteo_lat DECIMAL(10, 6),
+  open_meteo_lon DECIMAL(10, 6),
+  open_meteo_timezone VARCHAR(64),
   
   -- Metadata
   source VARCHAR(50) DEFAULT 'BMKG',
@@ -167,6 +179,14 @@ CREATE TABLE IF NOT EXISTS tidal_data (
   is_spring_tide BOOLEAN DEFAULT FALSE,     -- Pasang purnama
   is_neap_tide BOOLEAN DEFAULT FALSE,       -- Pasang perbani
   moon_phase VARCHAR(20),                   -- Fase bulan
+
+  -- Open-Meteo Marine fields (opsional)
+  wave_height_m DECIMAL(6, 3),
+  wave_direction_deg SMALLINT UNSIGNED,
+  wave_period_s DECIMAL(5, 2),
+  marine_lat DECIMAL(10, 6),
+  marine_lon DECIMAL(10, 6),
+  marine_timezone VARCHAR(64),
   
   -- Metadata
   source VARCHAR(50) DEFAULT 'BMKG',

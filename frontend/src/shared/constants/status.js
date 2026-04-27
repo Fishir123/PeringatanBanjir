@@ -10,6 +10,8 @@ export function mapBackendWaterStatus(waterStatus) {
   switch (waterStatus) {
     case 'safe':
       return 'safe';
+    case 'alert':
+      return 'alert';
     case 'warning':
       return 'alert';
     case 'danger':

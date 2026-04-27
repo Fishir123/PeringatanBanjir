@@ -40,19 +40,19 @@ let client = null;
  * falls back to water_level for legacy payloads.
  */
 const STATUS_DANGER_DISTANCE_CM = 3;
-const STATUS_WARNING_DISTANCE_CM = 10;
+const STATUS_ALERT_DISTANCE_CM = 10;
 
 function getWaterStatus(metricValue, metricType = 'water_level') {
   if (!Number.isFinite(metricValue)) return 'safe';
 
   if (metricType === 'distance_cm') {
     if (metricValue <= STATUS_DANGER_DISTANCE_CM) return 'danger';
-    if (metricValue <= STATUS_WARNING_DISTANCE_CM) return 'warning';
+    if (metricValue <= STATUS_ALERT_DISTANCE_CM) return 'alert';
     return 'safe';
   }
 
   if (metricValue >= 50) return 'danger';
-  if (metricValue >= 30) return 'warning';
+  if (metricValue >= 30) return 'alert';
   return 'safe';
 }
 

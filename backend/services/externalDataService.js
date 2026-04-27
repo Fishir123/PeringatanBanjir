@@ -1,4 +1,16 @@
 const db = require('../config/db');
+const https = require('https');
+const dns = require('dns');
+
+const FETCH_COOLDOWN_DEFAULTS = {
+  weatherMs: 10 * 60 * 1000,
+  tideMs: 30 * 60 * 1000,
+};
+
+const lastFetchAt = {
+  weather: 0,
+  tide: 0,
+};
 
 const CONFIG_DEFS = {
   weatherApiBaseUrl: {
@@ -13,17 +25,11 @@ const CONFIG_DEFS = {
     type: 'string',
     description: 'API key layanan cuaca',
   },
-  weatherLocationLat: {
-    env: 'WEATHER_LOCATION_LAT',
-    dbKey: 'weather_location_lat',
-    type: 'number',
-    description: 'Latitude lokasi cuaca',
-  },
-  weatherLocationLon: {
-    env: 'WEATHER_LOCATION_LON',
-    dbKey: 'weather_location_lon',
-    type: 'number',
-    description: 'Longitude lokasi cuaca',
+  weatherBmkgAdm4: {
+    env: 'WEATHER_BMKG_ADM4',
+    dbKey: 'weather_bmkg_adm4',
+    type: 'string',
+    description: 'Kode wilayah administrasi tingkat IV BMKG',
   },
   tideApiBaseUrl: {
     env: 'TIDE_API_BASE_URL',
@@ -60,6 +66,66 @@ function inferRainIntensity(rainfallMm) {
   return 'very_heavy';
 }
 
+function inferRainIntensityFromWeatherDesc(weatherDesc) {
+  const text = String(weatherDesc || '').toLowerCase();
+  if (!text.includes('hujan') && !text.includes('rain')) return 'none';
+  if (text.includes('ringan') || text.includes('light')) return 'light';
+  if (text.includes('sedang') || text.includes('moderate')) return 'moderate';
+  if (text.includes('lebat') || text.includes('heavy')) return 'heavy';
+  return 'moderate';
+}
+
+function isRainyForecastSlot(slot) {
+  const desc = String(slot?.weather_desc || slot?.weather_desc_en || '').toLowerCase();
+  if (desc.includes('hujan') || desc.includes('rain')) return true;
+
+  const weatherCode = toNumber(slot?.weather);
+  if (weatherCode == null) return false;
+  return weatherCode >= 60;
+}
+
+function toDateSafe(value) {
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function estimateBmkgRainDurationHours(payload) {
+  const slots = Array.isArray(payload?.data)
+    ? payload.data
+        .flatMap((region) => (Array.isArray(region?.cuaca) ? region.cuaca : []))
+        .flat()
+        .filter(Boolean)
+    : [];
+
+  if (slots.length === 0) return null;
+
+  const normalizedSlots = slots
+    .map((slot) => ({
+      ...slot,
+      _time: toDateSafe(slot?.local_datetime || slot?.utc_datetime),
+    }))
+    .filter((slot) => slot._time)
+    .sort((a, b) => a._time.getTime() - b._time.getTime());
+
+  if (normalizedSlots.length === 0) return null;
+
+  const now = new Date();
+  let startIndex = normalizedSlots.findIndex((slot) => slot._time.getTime() >= now.getTime());
+  if (startIndex < 0) startIndex = normalizedSlots.length - 1;
+
+  if (!isRainyForecastSlot(normalizedSlots[startIndex])) {
+    return 0;
+  }
+
+  let rainySlots = 0;
+  for (let i = startIndex; i < normalizedSlots.length; i += 1) {
+    if (!isRainyForecastSlot(normalizedSlots[i])) break;
+    rainySlots += 1;
+  }
+
+  return rainySlots * 3;
+}
+
 function inferWindDirection(deg) {
   if (!Number.isFinite(deg)) return null;
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -78,66 +144,8 @@ function normalizeToCm(value, unitHint = '') {
   return Number(numericValue.toFixed(2));
 }
 
-function flattenBmkgCuacaEntries(payload) {
-  const allEntries = [];
-
-  const groups = Array.isArray(payload?.data) ? payload.data : [];
-
-  for (const group of groups) {
-    const cuacaByDay = Array.isArray(group?.cuaca) ? group.cuaca : [];
-    for (const dayEntries of cuacaByDay) {
-      if (!Array.isArray(dayEntries)) continue;
-
-      for (const entry of dayEntries) {
-        allEntries.push({
-          entry,
-          lokasi: group?.lokasi || payload?.lokasi || null,
-        });
-      }
-    }
-  }
-
-  return allEntries;
-}
-
-function pickBestBmkgEntry(payload) {
-  const allEntries = flattenBmkgCuacaEntries(payload);
-  if (allEntries.length === 0) return null;
-
-  const now = Date.now();
-
-  const withTs = allEntries
-    .map((item) => {
-      const ts = Date.parse(item?.entry?.local_datetime || item?.entry?.datetime || '');
-      return {
-        ...item,
-        ts: Number.isFinite(ts) ? ts : null,
-      };
-    })
-    .sort((a, b) => {
-      if (a.ts == null && b.ts == null) return 0;
-      if (a.ts == null) return 1;
-      if (b.ts == null) return -1;
-      return a.ts - b.ts;
-    });
-
-  const nearestFuture = withTs.find((item) => item.ts != null && item.ts >= now);
-  if (nearestFuture) return nearestFuture;
-
-  const latestPast = [...withTs].reverse().find((item) => item.ts != null);
-  if (latestPast) return latestPast;
-
-  return withTs[0] || null;
-}
-
-function getLocationCodeFromUrl(baseUrl) {
-  try {
-    if (!baseUrl) return null;
-    const url = new URL(baseUrl);
-    return url.searchParams.get('adm4') || url.searchParams.get('adm3') || null;
-  } catch (error) {
-    return null;
-  }
+function isStormGlassUrl(url) {
+  return url.hostname.toLowerCase().includes('stormglass.io');
 }
 
 function detectApiKeyParam(url) {
@@ -151,11 +159,18 @@ function detectApiKeyParam(url) {
 
 function attachApiKey(url, apiKey) {
   if (!apiKey) return;
+  // StormGlass uses Authorization header, not query param
+  if (isStormGlassUrl(url)) return;
 
   const alreadyHasKey = KEY_CANDIDATES.some((candidate) => url.searchParams.has(candidate));
   if (alreadyHasKey) return;
 
   url.searchParams.set(detectApiKeyParam(url), apiKey);
+}
+
+function buildBmkgWeatherUrl(config) {
+  const adm4 = String(config.weatherBmkgAdm4 || '').trim() || '97.73.04';
+  return new URL(`https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${encodeURIComponent(adm4)}`);
 }
 
 function withTimeout(ms) {
@@ -166,6 +181,64 @@ function withTimeout(ms) {
     signal: controller.signal,
     cleanup: () => clearTimeout(timeoutId),
   };
+}
+
+function requestJsonViaHttps(url, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    dns.resolve4(url.hostname, (dnsError, addresses) => {
+      if (dnsError || !Array.isArray(addresses) || addresses.length === 0) {
+        reject(dnsError || new Error('DNS IPv4 tidak ditemukan untuk endpoint pasang surut'));
+        return;
+      }
+
+      const targetIp = addresses[0];
+
+      const request = https.request(
+        {
+          protocol: url.protocol,
+          hostname: targetIp,
+          servername: url.hostname,
+          port: url.port || 443,
+          path: `${url.pathname}${url.search}`,
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Host: url.hostname,
+          },
+        },
+        (response) => {
+          let body = '';
+
+          response.on('data', (chunk) => {
+            body += chunk;
+          });
+
+          response.on('end', () => {
+            if (response.statusCode < 200 || response.statusCode >= 300) {
+              reject(new Error(`Gagal memuat pasang surut (${response.statusCode})`));
+              return;
+            }
+
+            try {
+              resolve(JSON.parse(body));
+            } catch (error) {
+              reject(new Error('Response pasang surut bukan JSON valid'));
+            }
+          });
+        }
+      );
+
+      request.setTimeout(timeoutMs, () => {
+        request.destroy(new Error('Request pasang surut timeout'));
+      });
+
+      request.on('error', (error) => {
+        reject(error);
+      });
+
+      request.end();
+    });
+  });
 }
 
 async function readIntegrationSettingsFromDb() {
@@ -288,69 +361,284 @@ function parseWeatherPayload(payload, config) {
   }
 
   const now = new Date();
+  const openMeteoCurrent = payload?.current || {};
+  const openMeteoDaily = payload?.daily || {};
+  const openMeteoHourly = payload?.hourly || {};
+
+  const bmkgForecast = Array.isArray(payload?.data)
+    ? payload.data.flatMap((region) => Array.isArray(region?.cuaca) ? region.cuaca : [])
+    : [];
+  const bmkgCurrent = bmkgForecast.flat().find(Boolean) || null;
 
   const weatherCode =
+    bmkgCurrent?.weather ??
     payload?.weather?.[0]?.id ??
     payload?.current?.condition?.code ??
     payload?.weather_code ??
     null;
 
   const weatherDesc =
+    bmkgCurrent?.weather_desc ??
     payload?.weather?.[0]?.description ??
     payload?.current?.condition?.text ??
     payload?.weather_desc ??
     null;
 
   const rainfallMm =
+    toNumber(openMeteoCurrent?.rain) ??
+    toNumber(openMeteoCurrent?.precipitation) ??
+    toNumber(bmkgCurrent?.rainfall) ??
+    toNumber(bmkgCurrent?.rainfall_mm) ??
+    (Array.isArray(openMeteoHourly?.precipitation) ? toNumber(openMeteoHourly.precipitation[0]) : null) ??
     toNumber(payload?.rain?.['1h']) ??
     toNumber(payload?.rain?.['3h']) ??
     toNumber(payload?.current?.precip_mm) ??
     toNumber(payload?.precip_mm) ??
     toNumber(payload?.rainfall_mm) ??
-    0;
+    null;
 
   const humidity =
+    toNumber(openMeteoCurrent?.relative_humidity_2m) ??
+    toNumber(bmkgCurrent?.hu) ??
     toNumber(payload?.main?.humidity) ??
     toNumber(payload?.current?.humidity) ??
     toNumber(payload?.humidity) ??
     null;
 
   const temperature =
+    toNumber(openMeteoCurrent?.temperature_2m) ??
+    toNumber(bmkgCurrent?.t) ??
     toNumber(payload?.main?.temp) ??
     toNumber(payload?.current?.temp_c) ??
     toNumber(payload?.temperature) ??
     null;
 
-  const windSpeedKmhRaw =
-    toNumber(payload?.wind?.speed) ??
+  const windSpeedKmhDirect =
+    toNumber(openMeteoCurrent?.wind_speed_10m) ??
+    toNumber(bmkgCurrent?.ws) ??
     toNumber(payload?.current?.wind_kph) ??
+    null;
+  const windSpeedFromMs =
+    toNumber(payload?.wind?.speed) ??
     toNumber(payload?.wind_speed) ??
     null;
 
-  const windSpeedKmh = windSpeedKmhRaw == null ? null : Number((windSpeedKmhRaw * 3.6).toFixed(2));
+  const windSpeedKmh = windSpeedKmhDirect != null
+    ? Number(windSpeedKmhDirect.toFixed(2))
+    : windSpeedFromMs == null
+      ? null
+      : Number((windSpeedFromMs * 3.6).toFixed(2));
   const windDirection =
-    payload?.wind?.deg != null
+    bmkgCurrent?.wd ??
+    (openMeteoCurrent?.wind_direction_10m != null
+      ? inferWindDirection(toNumber(openMeteoCurrent.wind_direction_10m))
+      : null) ??
+    (payload?.wind?.deg != null
       ? inferWindDirection(toNumber(payload.wind.deg))
-      : payload?.current?.wind_dir || payload?.wind_direction || null;
+      : payload?.current?.wind_dir || payload?.wind_direction || null);
+
+  const rainDurationHours =
+    (Array.isArray(openMeteoDaily?.precipitation_hours)
+      ? toNumber(openMeteoDaily.precipitation_hours[0])
+      : null) ??
+    estimateBmkgRainDurationHours(payload);
+
+  const openMeteoPrecipProb = Array.isArray(openMeteoHourly?.precipitation_probability)
+    ? toNumber(openMeteoHourly.precipitation_probability[0])
+    : null;
+  const openMeteoPrecipSum = Array.isArray(openMeteoDaily?.precipitation_sum)
+    ? toNumber(openMeteoDaily.precipitation_sum[0])
+    : null;
+  const openMeteoPrecipHours = Array.isArray(openMeteoDaily?.precipitation_hours)
+    ? toNumber(openMeteoDaily.precipitation_hours[0])
+    : null;
+  const openMeteoPrecipProbMax = Array.isArray(openMeteoDaily?.precipitation_probability_max)
+    ? toNumber(openMeteoDaily.precipitation_probability_max[0])
+    : null;
+  const openMeteoLat = toNumber(payload?.latitude);
+  const openMeteoLon = toNumber(payload?.longitude);
+  const openMeteoTimezone = payload?.timezone || null;
+  const weatherDescFromRain =
+    rainfallMm == null
+      ? null
+      : rainfallMm <= 0
+        ? (openMeteoPrecipProb != null && openMeteoPrecipProb >= 50 ? 'Berawan' : 'Cerah')
+        : rainfallMm < 5
+          ? 'Hujan Ringan'
+          : rainfallMm < 20
+            ? 'Hujan Sedang'
+            : 'Hujan Lebat';
+
+  const locationCode = (() => {
+    if (String(payload?.source || '').toLowerCase().includes('open_meteo')) {
+      const lat = toNumber(payload?.latitude);
+      const lon = toNumber(payload?.longitude);
+      if (lat != null && lon != null) return `${lat},${lon}`;
+    }
+
+    return String(config.weatherBmkgAdm4 || '').trim() || '97.73.04';
+  })();
 
   return {
-    rainfallMm: Number(rainfallMm.toFixed(2)),
+    rainfallMm: rainfallMm == null ? null : Number(rainfallMm.toFixed(2)),
     humidity,
     temperature,
     windSpeedKmh,
     windDirection,
     weatherCode: weatherCode == null ? null : String(weatherCode),
-    weatherDesc,
+    weatherDesc: weatherDesc || weatherDescFromRain,
     forecastDate: now.toISOString().slice(0, 10),
     forecastHour: now.getHours(),
-    rainIntensity: inferRainIntensity(rainfallMm),
-    source: payload?.source || 'EXTERNAL_API',
-    locationCode: `${config.weatherLocationLat || ''},${config.weatherLocationLon || ''}`.replace(/^,|,$/g, '') || null,
+    rainDurationHours,
+    rainIntensity:
+      rainfallMm == null
+        ? inferRainIntensityFromWeatherDesc(weatherDesc)
+        : inferRainIntensity(rainfallMm),
+    precipitationMm: toNumber(openMeteoCurrent?.precipitation),
+    rainMm: toNumber(openMeteoCurrent?.rain),
+    precipitationProbability: openMeteoPrecipProb,
+    precipitationSumMm: openMeteoPrecipSum,
+    precipitationHours: openMeteoPrecipHours,
+    precipitationProbabilityMax: openMeteoPrecipProbMax,
+    openMeteoLat,
+    openMeteoLon,
+    openMeteoTimezone,
+    source: payload?.source || 'BMKG',
+    locationCode,
+  };
+}
+
+/**
+ * Parse StormGlass tide/extremes/point response.
+ *
+ * Response format:
+ * {
+ *   "data": [
+ *     { "height": 2.45, "time": "2024-01-01T02:15:00+00:00", "type": "high" },
+ *     { "height": 0.12, "time": "2024-01-01T08:45:00+00:00", "type": "low" }
+ *   ],
+ *   "meta": { "station": { "name": "...", "lat": ..., "lng": ... } }
+ * }
+ */
+function parseStormGlassTidePayload(payload, config) {
+  const now = new Date();
+  const events = Array.isArray(payload?.data) ? payload.data : [];
+  const meta = payload?.meta || {};
+  const station = meta.station || {};
+
+  // Find the nearest upcoming high and low events
+  const nowMs = now.getTime();
+  const futureEvents = events
+    .map((e) => ({ ...e, _ms: new Date(e.time).getTime() }))
+    .filter((e) => Number.isFinite(e._ms))
+    .sort((a, b) => a._ms - b._ms);
+
+  const highEvent = futureEvents.find((e) => String(e.type).toLowerCase() === 'high' && e._ms >= nowMs)
+    || futureEvents.find((e) => String(e.type).toLowerCase() === 'high');
+  const lowEvent = futureEvents.find((e) => String(e.type).toLowerCase() === 'low' && e._ms >= nowMs)
+    || futureEvents.find((e) => String(e.type).toLowerCase() === 'low');
+
+  // Find the most recent past event to determine current status
+  const pastEvents = futureEvents.filter((e) => e._ms <= nowMs);
+  const lastEvent = pastEvents.length > 0 ? pastEvents[pastEvents.length - 1] : null;
+  const nextEvent = futureEvents.find((e) => e._ms > nowMs);
+
+  let tideStatus = 'rising';
+  if (lastEvent && nextEvent) {
+    // After a low tide → rising; after a high tide → falling
+    tideStatus = String(lastEvent.type).toLowerCase() === 'low' ? 'rising' : 'falling';
+  } else if (nextEvent) {
+    tideStatus = String(nextEvent.type).toLowerCase() === 'high' ? 'rising' : 'falling';
+  }
+
+  // Estimate current tide level by interpolating between last and next events
+  let tideLevelCm = null;
+  if (lastEvent && nextEvent && lastEvent._ms !== nextEvent._ms) {
+    const progress = (nowMs - lastEvent._ms) / (nextEvent._ms - lastEvent._ms);
+    const interpolated = lastEvent.height + (nextEvent.height - lastEvent.height) * progress;
+    tideLevelCm = normalizeToCm(interpolated, 'm');
+  } else if (nextEvent) {
+    tideLevelCm = normalizeToCm(nextEvent.height, 'm');
+  } else if (lastEvent) {
+    tideLevelCm = normalizeToCm(lastEvent.height, 'm');
+  }
+
+  const highTideLevelCm = highEvent ? normalizeToCm(highEvent.height, 'm') : null;
+  const lowTideLevelCm = lowEvent ? normalizeToCm(lowEvent.height, 'm') : null;
+  const highTideTime = highEvent ? new Date(highEvent.time).toTimeString().slice(0, 8) : null;
+  const lowTideTime = lowEvent ? new Date(lowEvent.time).toTimeString().slice(0, 8) : null;
+
+  return {
+    tideLevelCm,
+    tideStatus,
+    highTideTime,
+    highTideLevelCm,
+    lowTideTime,
+    lowTideLevelCm,
+    predictionDate: now.toISOString().slice(0, 10),
+    isSpringTide: false,
+    isNeapTide: false,
+    moonPhase: null,
+    waveHeightM: null,
+    waveDirectionDeg: null,
+    wavePeriodS: null,
+    marineLat: toNumber(station.lat || meta.lat),
+    marineLon: toNumber(station.lng || meta.lng),
+    marineTimezone: null,
+    source: 'STORMGLASS',
+    stationCode: station.name || config.tideStationCode || 'stormglass',
   };
 }
 
 function parseTidePayload(payload, config) {
   const now = new Date();
+
+  const marineTimes = Array.isArray(payload?.hourly?.time) ? payload.hourly.time : [];
+  const marineWaveHeights = Array.isArray(payload?.hourly?.wave_height) ? payload.hourly.wave_height : [];
+
+  let marineCurrentHeightM = null;
+  let marineCurrentDirectionDeg = null;
+  let marineCurrentPeriodS = null;
+  let marineNextHeightM = null;
+  let marineHighHeightM = null;
+  let marineLowHeightM = null;
+  let marineHighTime = null;
+  let marineLowTime = null;
+
+  if (marineTimes.length > 0 && marineWaveHeights.length > 0) {
+    const nowMs = now.getTime();
+    let currentIndex = marineTimes.findIndex((timeValue) => {
+      const parsedTime = new Date(timeValue).getTime();
+      return Number.isFinite(parsedTime) && parsedTime >= nowMs;
+    });
+
+    if (currentIndex < 0) {
+      currentIndex = 0;
+    }
+
+    marineCurrentHeightM = toNumber(marineWaveHeights[currentIndex]);
+    const marineWaveDirections = Array.isArray(payload?.hourly?.wave_direction) ? payload.hourly.wave_direction : [];
+    const marineWavePeriods = Array.isArray(payload?.hourly?.wave_period) ? payload.hourly.wave_period : [];
+    marineCurrentDirectionDeg = toNumber(marineWaveDirections[currentIndex]);
+    marineCurrentPeriodS = toNumber(marineWavePeriods[currentIndex]);
+    marineNextHeightM = toNumber(marineWaveHeights[currentIndex + 1]);
+
+    const maxRange = Math.min(marineWaveHeights.length, currentIndex + 24);
+    for (let idx = currentIndex; idx < maxRange; idx += 1) {
+      const value = toNumber(marineWaveHeights[idx]);
+      if (!Number.isFinite(value)) continue;
+
+      if (marineHighHeightM == null || value > marineHighHeightM) {
+        marineHighHeightM = value;
+        marineHighTime = marineTimes[idx] || null;
+      }
+
+      if (marineLowHeightM == null || value < marineLowHeightM) {
+        marineLowHeightM = value;
+        marineLowTime = marineTimes[idx] || null;
+      }
+    }
+  }
 
   const heights = Array.isArray(payload?.heights) ? payload.heights : [];
   const latestHeight = heights.length > 0 ? heights[0] : null;
@@ -361,26 +649,33 @@ function parseTidePayload(payload, config) {
   const lowEvent = events.find((item) => String(item?.type || '').toLowerCase().includes('low'));
 
   const unitHint = payload?.unit || payload?.units || '';
+  const marineUnitHint = marineCurrentHeightM == null ? '' : 'm';
 
   const tideLevelCm = normalizeToCm(
-    latestHeight?.height ?? payload?.tide_level ?? payload?.current?.height,
-    unitHint
+    latestHeight?.height ?? payload?.tide_level ?? payload?.current?.height ?? marineCurrentHeightM,
+    unitHint || marineUnitHint
   );
 
   let tideStatus = String(payload?.tide_status || '').toLowerCase();
   if (!['high', 'low', 'rising', 'falling'].includes(tideStatus)) {
-    if (nextHeight?.height != null && latestHeight?.height != null) {
-      tideStatus = nextHeight.height > latestHeight.height ? 'rising' : 'falling';
+    const nextHeightValue = nextHeight?.height ?? marineNextHeightM;
+    const latestHeightValue = latestHeight?.height ?? marineCurrentHeightM;
+
+    if (nextHeightValue != null && latestHeightValue != null) {
+      tideStatus = nextHeightValue > latestHeightValue ? 'rising' : 'falling';
     } else {
       tideStatus = 'rising';
     }
   }
 
-  const highTideLevelCm = normalizeToCm(highEvent?.height, unitHint);
-  const lowTideLevelCm = normalizeToCm(lowEvent?.height, unitHint);
+  const highTideLevelCm = normalizeToCm(highEvent?.height ?? marineHighHeightM, unitHint || marineUnitHint);
+  const lowTideLevelCm = normalizeToCm(lowEvent?.height ?? marineLowHeightM, unitHint || marineUnitHint);
 
-  const highTideTime = highEvent?.date ? new Date(highEvent.date).toTimeString().slice(0, 8) : null;
-  const lowTideTime = lowEvent?.date ? new Date(lowEvent.date).toTimeString().slice(0, 8) : null;
+  const highTideDateTime = highEvent?.date || marineHighTime;
+  const lowTideDateTime = lowEvent?.date || marineLowTime;
+
+  const highTideTime = highTideDateTime ? new Date(highTideDateTime).toTimeString().slice(0, 8) : null;
+  const lowTideTime = lowTideDateTime ? new Date(lowTideDateTime).toTimeString().slice(0, 8) : null;
 
   return {
     tideLevelCm,
@@ -393,8 +688,14 @@ function parseTidePayload(payload, config) {
     isSpringTide: false,
     isNeapTide: false,
     moonPhase: payload?.moon_phase || null,
-    source: payload?.source || 'EXTERNAL_API',
-    stationCode: config.tideStationCode || null,
+    waveHeightM: marineCurrentHeightM,
+    waveDirectionDeg: marineCurrentDirectionDeg,
+    wavePeriodS: marineCurrentPeriodS,
+    marineLat: toNumber(payload?.latitude),
+    marineLon: toNumber(payload?.longitude),
+    marineTimezone: payload?.timezone || null,
+    source: payload?.source || (marineWaveHeights.length > 0 ? 'OPEN_METEO_MARINE' : 'EXTERNAL_API'),
+    stationCode: config.tideStationCode || (marineWaveHeights.length > 0 ? 'open-meteo-marine' : null),
   };
 }
 
@@ -402,9 +703,11 @@ async function persistWeatherData(weatherData) {
   const sql = `
     INSERT INTO weather_data (
       rainfall_mm, humidity, temperature, wind_speed, wind_direction,
-      weather_code, weather_desc, forecast_date, forecast_hour, rain_intensity,
+      weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
+      precipitation_mm, rain_mm, precipitation_probability, precipitation_sum_mm, precipitation_hours,
+      precipitation_probability_max, open_meteo_lat, open_meteo_lon, open_meteo_timezone,
       source, location_code
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   await db.query(sql, [
@@ -417,7 +720,17 @@ async function persistWeatherData(weatherData) {
     weatherData.weatherDesc,
     weatherData.forecastDate,
     weatherData.forecastHour,
+    weatherData.rainDurationHours,
     weatherData.rainIntensity,
+    weatherData.precipitationMm,
+    weatherData.rainMm,
+    weatherData.precipitationProbability,
+    weatherData.precipitationSumMm,
+    weatherData.precipitationHours,
+    weatherData.precipitationProbabilityMax,
+    weatherData.openMeteoLat,
+    weatherData.openMeteoLon,
+    weatherData.openMeteoTimezone,
     weatherData.source,
     weatherData.locationCode,
   ]);
@@ -428,8 +741,9 @@ async function persistTideData(tideData) {
     INSERT INTO tidal_data (
       tide_level_cm, tide_status, high_tide_time, high_tide_level_cm,
       low_tide_time, low_tide_level_cm, prediction_date, is_spring_tide,
-      is_neap_tide, moon_phase, source, station_code
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      is_neap_tide, moon_phase, wave_height_m, wave_direction_deg, wave_period_s,
+      marine_lat, marine_lon, marine_timezone, source, station_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   await db.query(sql, [
@@ -443,24 +757,24 @@ async function persistTideData(tideData) {
     tideData.isSpringTide,
     tideData.isNeapTide,
     tideData.moonPhase,
+    tideData.waveHeightM,
+    tideData.waveDirectionDeg,
+    tideData.wavePeriodS,
+    tideData.marineLat,
+    tideData.marineLon,
+    tideData.marineTimezone,
     tideData.source,
     tideData.stationCode,
   ]);
 }
 
 async function fetchWeatherData(config) {
-  if (!config.weatherApiBaseUrl) {
-    throw new Error('WEATHER_API_BASE_URL belum diatur');
-  }
+  const url = config.weatherApiBaseUrl
+    ? new URL(config.weatherApiBaseUrl)
+    : buildBmkgWeatherUrl(config);
 
-  const url = new URL(config.weatherApiBaseUrl);
-
-  if (config.weatherLocationLat && !url.searchParams.has('lat')) {
-    url.searchParams.set('lat', config.weatherLocationLat);
-  }
-
-  if (config.weatherLocationLon && !url.searchParams.has('lon')) {
-    url.searchParams.set('lon', config.weatherLocationLon);
+  if (url.hostname.includes('bmkg.go.id') && !url.searchParams.has('adm4')) {
+    url.searchParams.set('adm4', String(config.weatherBmkgAdm4 || '').trim() || '97.73.04');
   }
 
   attachApiKey(url, config.weatherApiKey);
@@ -468,19 +782,34 @@ async function fetchWeatherData(config) {
   const timeout = withTimeout(10000);
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: timeout.signal,
-    });
+    let payload;
 
-    if (!response.ok) {
-      throw new Error(`Gagal memuat cuaca (${response.status})`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'curl/7.68.0',
+        },
+        signal: timeout.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gagal memuat cuaca (${response.status})`);
+      }
+
+      payload = await response.json();
+    } catch (error) {
+      if (!String(error?.message || '').toLowerCase().includes('fetch failed')) {
+        throw error;
+      }
+
+      payload = await requestJsonViaHttps(url, 10000);
     }
 
-    const payload = await response.json();
+    if (url.hostname.includes('open-meteo.com')) {
+      payload.source = 'OPEN_METEO';
+    }
     const weatherData = parseWeatherPayload(payload, config);
 
     try {
@@ -499,36 +828,86 @@ async function fetchWeatherData(config) {
   }
 }
 
+function getCooldownMs(envKey, fallbackMs) {
+  const rawValue = Number(process.env[envKey]);
+  if (!Number.isFinite(rawValue) || rawValue <= 0) return fallbackMs;
+  return rawValue;
+}
+
+async function fetchWeatherDataWithCooldown(config, options = {}) {
+  const cooldownMs = getCooldownMs('WEATHER_FETCH_COOLDOWN_MS', FETCH_COOLDOWN_DEFAULTS.weatherMs);
+  const now = Date.now();
+  const since = now - lastFetchAt.weather;
+
+  if (!options.force && lastFetchAt.weather && since < cooldownMs) {
+    return {
+      skipped: true,
+      reason: 'cooldown',
+      cooldownMs,
+      lastFetchAt: new Date(lastFetchAt.weather).toISOString(),
+      retryAfterMs: cooldownMs - since,
+    };
+  }
+
+  const result = await fetchWeatherData(config);
+  lastFetchAt.weather = Date.now();
+  return {
+    skipped: false,
+    cooldownMs,
+    lastFetchAt: new Date(lastFetchAt.weather).toISOString(),
+    result,
+  };
+}
+
 async function fetchTideData(config) {
   if (!config.tideApiBaseUrl) {
     throw new Error('TIDE_API_BASE_URL belum diatur');
   }
 
   const url = new URL(config.tideApiBaseUrl);
+  const useStormGlass = isStormGlassUrl(url);
 
-  if (config.tideStationCode && !url.searchParams.has('station')) {
+  if (config.tideStationCode && !url.searchParams.has('station') && !useStormGlass && !url.hostname.includes('open-meteo.com')) {
     url.searchParams.set('station', config.tideStationCode);
   }
 
   attachApiKey(url, config.tideApiKey);
 
+  // Build request headers
+  const requestHeaders = { Accept: 'application/json' };
+  if (useStormGlass && config.tideApiKey) {
+    requestHeaders['Authorization'] = config.tideApiKey;
+  }
+
   const timeout = withTimeout(10000);
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: timeout.signal,
-    });
+    let payload;
 
-    if (!response.ok) {
-      throw new Error(`Gagal memuat pasang surut (${response.status})`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: requestHeaders,
+        signal: timeout.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gagal memuat pasang surut (${response.status})`);
+      }
+
+      payload = await response.json();
+    } catch (error) {
+      if (!String(error?.message || '').toLowerCase().includes('fetch failed')) {
+        throw error;
+      }
+
+      payload = await requestJsonViaHttps(url, 10000);
     }
 
-    const payload = await response.json();
-    const tideData = parseTidePayload(payload, config);
+    // Use StormGlass-specific parser when applicable
+    const tideData = useStormGlass
+      ? parseStormGlassTidePayload(payload, config)
+      : parseTidePayload(payload, config);
 
     try {
       await persistTideData(tideData);
@@ -546,12 +925,36 @@ async function fetchTideData(config) {
   }
 }
 
+async function fetchTideDataWithCooldown(config, options = {}) {
+  const cooldownMs = getCooldownMs('TIDE_FETCH_COOLDOWN_MS', FETCH_COOLDOWN_DEFAULTS.tideMs);
+  const now = Date.now();
+  const since = now - lastFetchAt.tide;
+
+  if (!options.force && lastFetchAt.tide && since < cooldownMs) {
+    return {
+      skipped: true,
+      reason: 'cooldown',
+      cooldownMs,
+      lastFetchAt: new Date(lastFetchAt.tide).toISOString(),
+      retryAfterMs: cooldownMs - since,
+    };
+  }
+
+  const result = await fetchTideData(config);
+  lastFetchAt.tide = Date.now();
+  return {
+    skipped: false,
+    cooldownMs,
+    lastFetchAt: new Date(lastFetchAt.tide).toISOString(),
+    result,
+  };
+}
+
 function toPublicConfig(config) {
   return {
     weatherApiBaseUrl: config.weatherApiBaseUrl || '',
     weatherApiKey: config.weatherApiKey || '',
-    weatherLocationLat: config.weatherLocationLat || '',
-    weatherLocationLon: config.weatherLocationLon || '',
+    weatherBmkgAdm4: config.weatherBmkgAdm4 || '',
     tideApiBaseUrl: config.tideApiBaseUrl || '',
     tideApiKey: config.tideApiKey || '',
     tideStationCode: config.tideStationCode || '',
@@ -563,5 +966,7 @@ module.exports = {
   saveIntegrationConfig,
   fetchWeatherData,
   fetchTideData,
+  fetchWeatherDataWithCooldown,
+  fetchTideDataWithCooldown,
   toPublicConfig,
 };
