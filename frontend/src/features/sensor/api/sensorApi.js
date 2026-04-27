@@ -2,6 +2,7 @@ const API_PREFIX = import.meta.env.VITE_API_PREFIX || '/api/sensor-data';
 
 async function requestJson(pathname = '') {
   const response = await fetch(`${API_PREFIX}${pathname}`, {
+    cache: 'no-store',
     headers: {
       Accept: 'application/json',
     },

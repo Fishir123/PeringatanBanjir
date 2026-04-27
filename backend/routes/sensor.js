@@ -6,7 +6,7 @@ const db = require('../config/db');
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query(
-      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data ORDER BY created_at DESC LIMIT 500'
+      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data ORDER BY created_at DESC, id DESC LIMIT 500'
     );
 
     res.json({
@@ -28,11 +28,11 @@ router.get('/latest', async (req, res) => {
       `SELECT s1.id, s1.device_id, s1.water_level, s1.water_status, s1.created_at
        FROM sensor_data s1
        INNER JOIN (
-         SELECT device_id, MAX(created_at) AS max_created_at
+         SELECT device_id, MAX(id) AS max_id
          FROM sensor_data
          GROUP BY device_id
-       ) s2 ON s1.device_id = s2.device_id AND s1.created_at = s2.max_created_at
-       ORDER BY s1.created_at DESC`
+       ) s2 ON s1.device_id = s2.device_id AND s1.id = s2.max_id
+       ORDER BY s1.created_at DESC, s1.id DESC`
     );
 
     res.json({
@@ -52,7 +52,7 @@ router.get('/:device_id', async (req, res) => {
   try {
     const { device_id } = req.params;
     const [rows] = await db.query(
-      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data WHERE device_id = ? ORDER BY created_at DESC LIMIT 500',
+      'SELECT id, device_id, water_level, water_status, created_at FROM sensor_data WHERE device_id = ? ORDER BY created_at DESC, id DESC LIMIT 500',
       [device_id]
     );
 

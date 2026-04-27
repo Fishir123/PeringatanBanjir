@@ -2,8 +2,12 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useLatestSensorByDeviceQuery, useSensorHistoryQuery } from '@/features/sensor/hooks/useSensorQueries';
-import { buildDeviceRows, mapSensorRowToUi } from '@/features/sensor/utils/sensorMappers';
+import {
+  useLatestSensorByDeviceQuery,
+  useLatestWeatherQuery,
+  useSensorHistoryQuery,
+} from '@/features/sensor/hooks/useSensorQueries';
+import { buildDeviceRows, buildSensorTableRows } from '@/features/sensor/utils/sensorMappers';
 import { statusLabels } from '@/shared/constants/status';
 // Fix leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -15,8 +19,8 @@ L.Icon.Default.mergeOptions({
 const badgeClass = {
     safe: 'status-badge-safe',
     alert: 'status-badge-alert',
-    warning: 'status-badge-warning',
     danger: 'status-badge-danger',
+  warning: 'status-badge-alert',
 };
 const PAGE_SIZE = 10;
 const LeafletMap = ({ devices }) => {
@@ -40,8 +44,23 @@ const SensorPage = () => {
     const [page, setPage] = useState(0);
   const historyQuery = useSensorHistoryQuery();
   const latestQuery = useLatestSensorByDeviceQuery();
-  const sensorRows = useMemo(() => (historyQuery.data ?? []).map(mapSensorRowToUi), [historyQuery.data]);
+  const weatherQuery = useLatestWeatherQuery();
+    const sensorRows = useMemo(() => buildSensorTableRows(historyQuery.data), [historyQuery.data]);
   const devices = useMemo(() => buildDeviceRows(latestQuery.data), [latestQuery.data]);
+  const latestWeatherText = useMemo(() => {
+    const hasRainfallValue = weatherQuery.data?.rainfall_mm != null && weatherQuery.data?.rainfall_mm !== '';
+    const rainfall = Number(weatherQuery.data?.rainfall_mm);
+    const rainfallText = hasRainfallValue && Number.isFinite(rainfall) ? `${rainfall.toFixed(2)} mm` : null;
+    const weatherDesc = weatherQuery.data?.weather_desc || null;
+
+    if (rainfallText && weatherDesc) return `${rainfallText} - ${weatherDesc}`;
+    return rainfallText || weatherDesc || '-';
+  }, [weatherQuery.data]);
+  const latestRainDurationText = useMemo(() => {
+    const duration = Number(weatherQuery.data?.rain_duration_hours);
+    if (!Number.isFinite(duration)) return '-';
+    return `${duration.toFixed(1)} jam`;
+  }, [weatherQuery.data]);
     const filtered = useMemo(() => {
         if (!search)
       return sensorRows;
@@ -59,12 +78,12 @@ const SensorPage = () => {
         a.download = 'sensor-data.csv';
         a.click();
     };
-  if (historyQuery.isLoading || latestQuery.isLoading) {
+  if (historyQuery.isLoading || latestQuery.isLoading || weatherQuery.isLoading) {
     return (<div className="flood-card">
     <p className="text-sm text-muted-foreground">Memuat data sensor dari backend...</p>
     </div>);
   }
-  if (historyQuery.isError || latestQuery.isError) {
+  if (historyQuery.isError || latestQuery.isError || weatherQuery.isError) {
     return (<div className="flood-card border border-status-danger/40">
     <p className="text-sm text-status-danger">Gagal memuat data sensor. Pastikan backend berjalan di port 3000.</p>
     </div>);
@@ -100,7 +119,7 @@ const SensorPage = () => {
               <th className="pb-3 text-muted-foreground font-medium">Timestamp</th>
               <th className="pb-3 text-muted-foreground font-medium">Tinggi Air</th>
               <th className="pb-3 text-muted-foreground font-medium">Curah Hujan</th>
-              <th className="pb-3 text-muted-foreground font-medium">Kec. Naik</th>
+              <th className="pb-3 text-muted-foreground font-medium">Kec. Naik (real time)</th>
               <th className="pb-3 text-muted-foreground font-medium">Durasi Hujan</th>
               <th className="pb-3 text-muted-foreground font-medium">Perangkat</th>
               <th className="pb-3 text-muted-foreground font-medium">Status</th>
@@ -110,13 +129,13 @@ const SensorPage = () => {
             {paged.map(s => (<tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
                 <td className="py-2.5 text-card-foreground font-mono text-xs">{new Date(s.timestamp).toLocaleString('id-ID')}</td>
                 <td className="py-2.5 text-card-foreground">{s.waterLevel} cm</td>
-                <td className="py-2.5 text-card-foreground">-</td>
-                <td className="py-2.5 text-card-foreground">-</td>
-                <td className="py-2.5 text-card-foreground">-</td>
+                <td className="py-2.5 text-card-foreground">{latestWeatherText}</td>
+                <td className="py-2.5 text-card-foreground">{s.waterRiseRateText}</td>
+                <td className="py-2.5 text-card-foreground">{latestRainDurationText}</td>
                 <td className="py-2.5 text-card-foreground font-mono text-xs">{s.deviceId}</td>
                 <td className="py-2.5">
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${badgeClass[s.status]}`}>
-                    {statusLabels[s.status]}
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${badgeClass[s.status] || 'status-badge-alert'}`}>
+                    {statusLabels[s.status] || statusLabels.alert}
                   </span>
                 </td>
               </tr>))}

@@ -2,6 +2,7 @@ const API_PREFIX = import.meta.env.VITE_EXTERNAL_API_PREFIX || '/api/external';
 
 async function requestJson(pathname, options = {}) {
   const response = await fetch(`${API_PREFIX}${pathname}`, {
+    cache: 'no-store',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -34,8 +35,20 @@ export function triggerWeatherFetch() {
   return requestJson('/weather/fetch', { method: 'POST' });
 }
 
+export function fetchLatestWeather() {
+  return requestJson('/weather/latest', { method: 'GET' });
+}
+
+export function fetchWeatherHistory(limit = 24) {
+  return requestJson(`/weather/history?limit=${encodeURIComponent(limit)}`, { method: 'GET' });
+}
+
 export function triggerTideFetch() {
   return requestJson('/tide/fetch', { method: 'POST' });
+}
+
+export function fetchLatestTide() {
+  return requestJson('/tide/latest', { method: 'GET' });
 }
 
 export function triggerCombinedFetch() {

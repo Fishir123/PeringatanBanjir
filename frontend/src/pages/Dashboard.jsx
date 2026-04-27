@@ -1,7 +1,13 @@
 import { useMemo } from 'react';
 import { Droplets, CloudRain, Cpu, Bell, TrendingUp, Activity } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useLatestSensorByDeviceQuery, useSensorHistoryQuery } from '@/features/sensor/hooks/useSensorQueries';
+import {
+  useLatestTideQuery,
+  useLatestSensorByDeviceQuery,
+  useLatestWeatherQuery,
+  useSensorHistoryQuery,
+  useWeatherHistoryQuery,
+} from '@/features/sensor/hooks/useSensorQueries';
 import {
   buildDashboardStatus,
   buildNotificationRows,
@@ -19,25 +25,125 @@ const statusBgMap = {
     alert: 'bg-status-alert',
     danger: 'bg-status-danger',
 };
+const tideStatusLabelMap = {
+  high: 'Pasang',
+  low: 'Surut',
+  rising: 'Naik',
+  falling: 'Turun',
+};
+const tideStatusBadgeClassMap = {
+  high: 'bg-amber-500/20 text-amber-100 border border-amber-200/40',
+  low: 'bg-cyan-500/20 text-cyan-100 border border-cyan-200/40',
+  rising: 'bg-emerald-500/20 text-emerald-100 border border-emerald-200/40',
+  falling: 'bg-rose-500/20 text-rose-100 border border-rose-200/40',
+};
+
+function formatTideTime(value) {
+  if (!value || typeof value !== 'string') return '--:--';
+
+  const [hour, minute] = value.split(':');
+  if (hour == null || minute == null) return '--:--';
+
+  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+}
+
 const Dashboard = () => {
     const historyQuery = useSensorHistoryQuery();
     const latestQuery = useLatestSensorByDeviceQuery();
+    const latestWeatherQuery = useLatestWeatherQuery();
+    const latestTideQuery = useLatestTideQuery();
+    const weatherHistoryQuery = useWeatherHistoryQuery();
     const data = useMemo(() => buildDashboardStatus(latestQuery.data, historyQuery.data), [latestQuery.data, historyQuery.data]);
     const waterLevelChartData = useMemo(() => buildWaterLevelChartData(historyQuery.data), [historyQuery.data]);
-    const rainfallChartData = useMemo(() => buildRainfallChartData(historyQuery.data), [historyQuery.data]);
+    const rainfallChartData = useMemo(() => buildRainfallChartData(weatherHistoryQuery.data), [weatherHistoryQuery.data]);
     const notifications = useMemo(() => buildNotificationRows(historyQuery.data), [historyQuery.data]);
+    const latestWeather = latestWeatherQuery.data;
+    const latestTide = latestTideQuery.data;
+    const rainfallDisplay = useMemo(() => {
+      const hasRainfallValue = latestWeather?.rainfall_mm != null && latestWeather?.rainfall_mm !== '';
+      const rainfall = Number(latestWeather?.rainfall_mm);
+      const rainfallText = hasRainfallValue && Number.isFinite(rainfall) ? `${rainfall.toFixed(1)} mm` : '';
+      const weatherDesc = latestWeather?.weather_desc || '';
+
+      if (weatherDesc && rainfallText) return `${weatherDesc} - ${rainfallText}`;
+      return weatherDesc || rainfallText || '-';
+    }, [latestWeather]);
+    const rainMetaText = useMemo(() => {
+      const probability = Number(latestWeather?.precipitation_probability);
+      const probabilityMax = Number(latestWeather?.precipitation_probability_max);
+      const durationHours = Number(latestWeather?.precipitation_hours);
+      const sumMm = Number(latestWeather?.precipitation_sum_mm);
+      const parts = [];
+
+      if (Number.isFinite(probability)) {
+        parts.push(`Peluang ${probability.toFixed(0)}%`);
+      }
+
+      if (Number.isFinite(probabilityMax)) {
+        parts.push(`Max ${probabilityMax.toFixed(0)}%`);
+      }
+
+      if (Number.isFinite(durationHours)) {
+        parts.push(`Durasi ${durationHours.toFixed(1)} jam`);
+      }
+
+      if (Number.isFinite(sumMm)) {
+        parts.push(`Akumulasi ${sumMm.toFixed(1)} mm`);
+      }
+
+      return parts.length ? parts.join(' - ') : '-';
+    }, [latestWeather]);
+    const weatherSourceText = useMemo(() => {
+      const lat = Number(latestWeather?.open_meteo_lat);
+      const lon = Number(latestWeather?.open_meteo_lon);
+      const timezone = latestWeather?.open_meteo_timezone;
+
+      if (Number.isFinite(lat) && Number.isFinite(lon) && timezone) {
+        return `Open-Meteo ${lat.toFixed(2)}, ${lon.toFixed(2)} (${timezone})`;
+      }
+
+      if (latestWeather?.source) {
+        return `Sumber ${latestWeather.source}`;
+      }
+
+      return '';
+    }, [latestWeather]);
+    const tideDisplay = useMemo(() => {
+      const tideLevel = Number(latestTide?.tide_level_cm);
+      const tideLevelText = Number.isFinite(tideLevel) ? `${tideLevel.toFixed(1)}` : '-';
+      const tideStatusText = tideStatusLabelMap[latestTide?.tide_status] || '';
+
+      if (tideStatusText) return `${tideLevelText} - ${tideStatusText}`;
+      return tideLevelText;
+    }, [latestTide]);
+    const tideStatusLabel = tideStatusLabelMap[latestTide?.tide_status] || 'Tidak tersedia';
+    const tideStatusBadgeClass = tideStatusBadgeClassMap[latestTide?.tide_status] || 'bg-white/15 text-white border border-white/30';
+    const highTideTimeText = formatTideTime(latestTide?.high_tide_time);
+    const lowTideTimeText = formatTideTime(latestTide?.low_tide_time);
     const stats = [
         { icon: Cpu, label: 'Total Perangkat', value: data.devicesTotal, sub: `${data.devicesOnline} online` },
         { icon: Activity, label: 'Perangkat Online', value: data.devicesOnline, sub: `dari ${data.devicesTotal}` },
         { icon: Bell, label: 'Notifikasi Hari Ini', value: data.todayNotifications, sub: 'peringatan' },
         { icon: TrendingUp, label: 'Rata-rata Tinggi Air', value: `${data.avgWaterLevel} cm`, sub: '24 jam terakhir' },
     ];
-    if (historyQuery.isLoading || latestQuery.isLoading) {
+    if (
+      historyQuery.isLoading ||
+      latestQuery.isLoading ||
+      latestWeatherQuery.isLoading ||
+      latestTideQuery.isLoading ||
+      weatherHistoryQuery.isLoading
+    ) {
         return (<div className="flood-card">
         <p className="text-sm text-muted-foreground">Memuat data sensor dari backend...</p>
       </div>);
     }
-    if (historyQuery.isError || latestQuery.isError) {
+    if (
+      historyQuery.isError ||
+      latestQuery.isError ||
+      latestWeatherQuery.isError ||
+      latestTideQuery.isError ||
+      weatherHistoryQuery.isError
+    ) {
         return (<div className="flood-card border border-status-danger/40">
         <p className="text-sm text-status-danger">Gagal memuat data sensor. Pastikan backend berjalan di port 3000.</p>
       </div>);
@@ -58,8 +164,14 @@ const Dashboard = () => {
           </div>
           <div className="text-center">
             <CloudRain className="w-8 h-8 mx-auto mb-1 opacity-80"/>
-            <p className="text-2xl font-bold">{data.rainfall.toFixed(1)}</p>
-            <p className="text-xs opacity-80">mm (Curah Hujan, belum tersedia)</p>
+            <p className="text-2xl font-bold">{rainfallDisplay}</p>
+            <p className="text-[11px] opacity-80 mt-1">{rainMetaText}</p>
+            {weatherSourceText ? (<p className="text-[10px] opacity-70 mt-1">{weatherSourceText}</p>) : null}
+          </div>
+          <div className="text-center">
+            <Droplets className="w-8 h-8 mx-auto mb-1 opacity-80"/>
+            <p className="text-2xl font-bold">{tideDisplay}</p>
+            <p className="text-[11px] opacity-90 mt-1">High {highTideTimeText} • Low {lowTideTimeText}</p>
           </div>
         </div>
       </div>
@@ -89,28 +201,40 @@ const Dashboard = () => {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="flood-card">
           <h3 className="text-sm font-semibold text-card-foreground mb-4">📊 Tren Tinggi Air (24 Jam)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={waterLevelChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }}/>
-              <Area type="monotone" dataKey="level" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2}/>
-            </AreaChart>
-          </ResponsiveContainer>
+          {waterLevelChartData.length === 0 ? (
+            <div className="h-[250px] rounded-lg border border-dashed border-border flex items-center justify-center text-center px-4">
+              <p className="text-sm text-muted-foreground">Belum ada data realtime tinggi air dalam 24 jam terakhir.</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={waterLevelChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
+                <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }}/>
+                <Area type="monotone" dataKey="level" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2}/>
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="flood-card">
           <h3 className="text-sm font-semibold text-card-foreground mb-4">🌧️ Curah Hujan (24 Jam)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={rainfallChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }}/>
-              <Bar dataKey="rainfall" fill="hsl(var(--status-alert))" radius={[4, 4, 0, 0]}/>
-            </BarChart>
-          </ResponsiveContainer>
+          {rainfallChartData.length === 0 ? (
+            <div className="h-[250px] rounded-lg border border-dashed border-border flex items-center justify-center text-center px-4">
+              <p className="text-sm text-muted-foreground">Belum ada data curah hujan Open-Meteo dalam 24 jam terakhir.</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={rainfallChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
+                <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }}/>
+                <Bar dataKey="rainfall" fill="hsl(var(--status-alert))" radius={[4, 4, 0, 0]}/>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

@@ -32,29 +32,135 @@ export function mapSensorRowToUi(row) {
   };
 }
 
-export function buildWaterLevelChartData(historyRows, limit = 24) {
-  const normalized = (historyRows ?? []).map(mapSensorRowToUi);
-  const chronological = normalized.slice().reverse().slice(-limit);
+function toTimestamp(value) {
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
 
-  return chronological.map((row) => ({
-    time: new Date(row.timestamp).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    level: row.waterLevel,
-  }));
+function formatWaterRiseRate(deltaLevelCm, elapsedMinutes) {
+  if (!Number.isFinite(deltaLevelCm) || !Number.isFinite(elapsedMinutes) || elapsedMinutes <= 0) {
+    return '-';
+  }
+
+  const absoluteDelta = Math.abs(deltaLevelCm).toFixed(2);
+  const durationLabel = elapsedMinutes >= 60
+    ? `${(elapsedMinutes / 60).toFixed(1)} jam`
+    : `${elapsedMinutes.toFixed(1)} menit`;
+
+  if (deltaLevelCm > 0) return `Naik ${absoluteDelta} cm/${durationLabel}`;
+  if (deltaLevelCm < 0) return `Turun ${absoluteDelta} cm/${durationLabel}`;
+  return `0.00 cm/${durationLabel}`;
+}
+
+export function buildSensorTableRows(historyRows) {
+  const MIN_COMPARISON_MINUTES = 2;
+  const MAX_LOOKAHEAD_ROWS = 40;
+  const normalized = (historyRows ?? [])
+    .map(mapSensorRowToUi)
+    .map((row) => ({
+      ...row,
+      timestampMs: toTimestamp(row.timestamp),
+    }))
+    .filter((row) => row.timestampMs != null)
+    .sort((a, b) => b.timestampMs - a.timestampMs);
+
+  return normalized.map((row, index) => {
+    let comparisonRow = null;
+    let elapsedMinutes = null;
+
+    const maxIndex = Math.min(normalized.length, index + 1 + MAX_LOOKAHEAD_ROWS);
+    for (let i = index + 1; i < maxIndex; i += 1) {
+      const candidate = normalized[i];
+      const candidateMinutes = (row.timestampMs - candidate.timestampMs) / (1000 * 60);
+
+      if (Number.isFinite(candidateMinutes) && candidateMinutes >= MIN_COMPARISON_MINUTES) {
+        comparisonRow = candidate;
+        elapsedMinutes = candidateMinutes;
+        break;
+      }
+    }
+
+    if (!comparisonRow) {
+      return {
+        ...row,
+        waterRiseRateText: '-',
+      };
+    }
+
+    // Untuk sensor ultrasonic, nilai yang lebih kecil biasanya berarti permukaan air makin naik.
+    const deltaLevel = comparisonRow.waterLevel - row.waterLevel;
+
+    if (!Number.isFinite(elapsedMinutes) || elapsedMinutes <= 0) {
+      return {
+        ...row,
+        waterRiseRateText: '-',
+      };
+    }
+
+    return {
+      ...row,
+      waterRiseRateText: formatWaterRiseRate(deltaLevel, elapsedMinutes),
+    };
+  });
+}
+
+export function buildWaterLevelChartData(historyRows, limit = 24) {
+  const now = Date.now();
+  const last24h = now - 24 * 60 * 60 * 1000;
+
+  const normalized = (historyRows ?? [])
+    .map(mapSensorRowToUi)
+    .filter((row) => {
+      const ts = new Date(row.timestamp).getTime();
+      return Number.isFinite(ts) && ts >= last24h && ts <= now;
+    });
+
+  const groupedByHour = normalized.reduce((acc, row) => {
+    const date = new Date(row.timestamp);
+    const hourKey = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      date.getHours(),
+      0,
+      0,
+      0
+    ).toISOString();
+
+    if (!acc[hourKey]) {
+      acc[hourKey] = {
+        total: 0,
+        count: 0,
+        date,
+      };
+    }
+
+    acc[hourKey].total += row.waterLevel;
+    acc[hourKey].count += 1;
+    return acc;
+  }, {});
+
+  return Object.values(groupedByHour)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(-limit)
+    .map((bucket) => ({
+      time: bucket.date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      level: Number((bucket.total / bucket.count).toFixed(2)),
+    }));
 }
 
 export function buildRainfallChartData(historyRows, limit = 24) {
-  const normalized = (historyRows ?? []).map(mapSensorRowToUi);
-  const chronological = normalized.slice().reverse().slice(-limit);
+  const chronological = (historyRows ?? []).slice().reverse().slice(-limit);
 
   return chronological.map((row) => ({
-    time: new Date(row.timestamp).toLocaleTimeString('id-ID', {
+    time: new Date(row.recorded_at || row.forecast_date || row.created_at || Date.now()).toLocaleTimeString('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
     }),
-    rainfall: 0,
+    rainfall: Number(row?.rainfall_mm ?? 0),
   }));
 }
 
