@@ -74,13 +74,19 @@ extension FloodStatusX on FloodStatus {
 }
 
 FloodStatus mapBackendWaterStatus(String? waterStatusRaw) {
-  switch (waterStatusRaw) {
+  final normalized = waterStatusRaw?.trim().toLowerCase();
+
+  switch (normalized) {
     case 'safe':
+    case 'aman':
       return FloodStatus.safe;
+    case 'alert':
     case 'warning':
+    case 'siaga':
       return FloodStatus.alert;
     case 'danger':
     case 'critical':
+    case 'bahaya':
       return FloodStatus.danger;
     default:
       return FloodStatus.safe;
@@ -88,11 +94,14 @@ FloodStatus mapBackendWaterStatus(String? waterStatusRaw) {
 }
 
 FloodStatus deriveStatusByWaterLevel(double level) {
-  if (level <= 3) {
+  // Backward compatible heuristic:
+  // - deployment lama: angka kecil => bahaya (distance sensor ke air)
+  // - deployment baru: angka besar => bahaya (tinggi air)
+  if (level <= 3 || level >= 200) {
     return FloodStatus.danger;
   }
 
-  if (level <= 10) {
+  if (level <= 10 || level >= 150) {
     return FloodStatus.alert;
   }
 

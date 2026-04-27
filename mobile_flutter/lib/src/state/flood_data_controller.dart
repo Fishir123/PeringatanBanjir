@@ -13,6 +13,8 @@ class FloodDataController extends ChangeNotifier {
 
   List<SensorReading> history = const [];
   List<SensorReading> latestByDevice = const [];
+  WeatherInfo? weatherInfo;
+  TideInfo? tideInfo;
 
   bool isLoading = true;
   bool isRefreshing = false;
@@ -42,10 +44,14 @@ class FloodDataController extends ChangeNotifier {
       final results = await Future.wait([
         _apiService.fetchHistory(),
         _apiService.fetchLatestByDevice(),
+        _apiService.fetchLatestWeather(),
+        _apiService.fetchLatestTide(),
       ]);
 
-      history = results[0];
-      latestByDevice = results[1];
+      history = results[0] as List<SensorReading>;
+      latestByDevice = results[1] as List<SensorReading>;
+      weatherInfo = results[2] as WeatherInfo?;
+      tideInfo = results[3] as TideInfo?;
       errorMessage = null;
       lastUpdated = DateTime.now();
     } catch (error) {

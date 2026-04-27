@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:peringatan_banjir_mobile/src/core/formatters.dart';
 import 'package:peringatan_banjir_mobile/src/core/status.dart';
+import 'package:peringatan_banjir_mobile/src/data/models.dart';
 import 'package:peringatan_banjir_mobile/src/state/flood_data_controller.dart';
 import 'package:peringatan_banjir_mobile/src/ui/widgets/sparkline_chart.dart';
 import 'package:peringatan_banjir_mobile/src/ui/widgets/status_chip.dart';
@@ -64,6 +65,41 @@ class DashboardPage extends StatelessWidget {
                 value: controller.lastUpdated != null
                     ? formatTime(controller.lastUpdated!)
                     : '-',
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _SectionTitle(
+            title: 'Cuaca & Pasang Surut Laut',
+            subtitle: 'Informasi pendukung kondisi banjir',
+          ),
+          const SizedBox(height: 8),
+          _SimpleInfoRow(
+            items: [
+              _InfoItem(
+                icon: Icons.cloud_rounded,
+                label: 'Cuaca',
+                value: _weatherText(controller.weatherInfo),
+              ),
+              _InfoItem(
+                icon: Icons.waves_rounded,
+                label: 'Pasang Surut',
+                value: _tideText(controller.tideInfo),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _SimpleInfoRow(
+            items: [
+              _InfoItem(
+                icon: Icons.thermostat_rounded,
+                label: 'Suhu / Kelembapan',
+                value: _tempHumidityText(controller.weatherInfo),
+              ),
+              _InfoItem(
+                icon: Icons.schedule_rounded,
+                label: 'Jadwal Pasut',
+                value: _tideScheduleText(controller.tideInfo),
               ),
             ],
           ),
@@ -364,6 +400,90 @@ class _SimpleInfoRow extends StatelessWidget {
           .toList(),
     );
   }
+}
+
+String _weatherText(WeatherInfo? weather) {
+  if (weather == null) return 'Belum ada data';
+
+  final desc = weather.weatherDesc?.trim();
+  final rain = weather.rainfallMm;
+
+  if (desc != null && desc.isNotEmpty) {
+    if (rain != null && rain > 0) {
+      return '$desc • ${rain.toStringAsFixed(1)} mm';
+    }
+    return desc;
+  }
+
+  if (rain != null) {
+    return '${rain.toStringAsFixed(1)} mm';
+  }
+
+  return 'Belum ada data';
+}
+
+String _tempHumidityText(WeatherInfo? weather) {
+  if (weather == null) return '-';
+
+  final temp = weather.temperature;
+  final humidity = weather.humidity;
+
+  if (temp == null && humidity == null) return '-';
+  if (temp != null && humidity != null) {
+    return '${temp.toStringAsFixed(1)}°C • ${humidity.toStringAsFixed(0)}%';
+  }
+
+  if (temp != null) return '${temp.toStringAsFixed(1)}°C';
+  return '${humidity!.toStringAsFixed(0)}%';
+}
+
+String _tideText(TideInfo? tide) {
+  if (tide == null) return 'Belum ada data';
+
+  final status = tide.tideStatus?.trim();
+  final level = tide.tideLevelCm;
+
+  String statusLabel;
+  switch (status) {
+    case 'high':
+      statusLabel = 'Pasang Tinggi';
+      break;
+    case 'low':
+      statusLabel = 'Surut';
+      break;
+    case 'rising':
+      statusLabel = 'Air Naik';
+      break;
+    case 'falling':
+      statusLabel = 'Air Turun';
+      break;
+    default:
+      statusLabel = 'Tidak diketahui';
+  }
+
+  if (level != null) {
+    return '$statusLabel • ${level.toStringAsFixed(1)} cm';
+  }
+
+  return statusLabel;
+}
+
+String _tideScheduleText(TideInfo? tide) {
+  if (tide == null) return '-';
+
+  final high = tide.highTideTime;
+  final low = tide.lowTideTime;
+
+  if ((high == null || high.isEmpty) && (low == null || low.isEmpty)) {
+    return '-';
+  }
+
+  if (high != null && high.isNotEmpty && low != null && low.isNotEmpty) {
+    return 'Pasang $high • Surut $low';
+  }
+
+  if (high != null && high.isNotEmpty) return 'Pasang $high';
+  return 'Surut ${low!}';
 }
 
 class _InfoItem {

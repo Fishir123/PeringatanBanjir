@@ -34,4 +34,8 @@ class ApiConfig {
   static Uri sensorHistoryUri() => Uri.parse('$baseUrl/api/sensor-data');
 
   static Uri sensorLatestUri() => Uri.parse('$baseUrl/api/sensor-data/latest');
+
+  static Uri weatherLatestUri() => Uri.parse('$baseUrl/api/external/weather/latest');
+
+  static Uri tideLatestUri() => Uri.parse('$baseUrl/api/external/tide/latest');
 }
