@@ -2,8 +2,10 @@ import { Bell, Moon, Sun, User, ChevronDown, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { useSensorHistoryQuery } from '@/features/sensor/hooks/useSensorQueries';
 import { buildNotificationRows } from '@/features/sensor/utils/sensorMappers';
+import { useAuth } from '@/features/auth/AuthProvider';
 const Navbar = ({ darkMode, onToggleDark, onToggleSidebar }) => {
     const [showProfile, setShowProfile] = useState(false);
+  const { user, logout } = useAuth();
   const historyQuery = useSensorHistoryQuery();
   const unread = buildNotificationRows(historyQuery.data, 8).filter(n => !n.read).length;
     return (<header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20">
@@ -34,14 +36,14 @@ const Navbar = ({ darkMode, onToggleDark, onToggleSidebar }) => {
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <User className="w-4 h-4 text-primary-foreground"/>
             </div>
-            <span className="text-sm font-medium text-card-foreground hidden sm:block">Admin</span>
+            <span className="text-sm font-medium text-card-foreground hidden sm:block">{user?.username || 'Admin'}</span>
             <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block"/>
           </button>
           {showProfile && (<div className="absolute right-0 top-12 w-48 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
               <button className="w-full text-left px-4 py-2 text-sm text-card-foreground hover:bg-muted">Profil</button>
               <button className="w-full text-left px-4 py-2 text-sm text-card-foreground hover:bg-muted">Pengaturan</button>
               <hr className="border-border my-1"/>
-              <button className="w-full text-left px-4 py-2 text-sm text-status-danger hover:bg-muted">Logout</button>
+              <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-status-danger hover:bg-muted">Logout</button>
             </div>)}
         </div>
       </div>

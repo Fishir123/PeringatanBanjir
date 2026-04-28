@@ -1,11 +1,15 @@
+import { getAuthToken } from '@/features/auth/authStorage';
+
 const API_PREFIX = import.meta.env.VITE_EXTERNAL_API_PREFIX || '/api/external';
 
 async function requestJson(pathname, options = {}) {
+  const token = getAuthToken();
   const response = await fetch(`${API_PREFIX}${pathname}`, {
     cache: 'no-store',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -49,6 +53,10 @@ export function triggerTideFetch() {
 
 export function fetchLatestTide() {
   return requestJson('/tide/latest', { method: 'GET' });
+}
+
+export function fetchTideHistory(limit = 24) {
+  return requestJson(`/tide/history?limit=${encodeURIComponent(limit)}`, { method: 'GET' });
 }
 
 export function triggerCombinedFetch() {

@@ -1,10 +1,14 @@
+import { getAuthToken } from '@/features/auth/authStorage';
+
 const API_PREFIX = import.meta.env.VITE_API_PREFIX || '/api/sensor-data';
 
 async function requestJson(pathname = '') {
+  const token = getAuthToken();
   const response = await fetch(`${API_PREFIX}${pathname}`, {
     cache: 'no-store',
     headers: {
       Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 

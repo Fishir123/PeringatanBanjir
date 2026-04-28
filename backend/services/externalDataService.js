@@ -368,7 +368,17 @@ function parseWeatherPayload(payload, config) {
   const bmkgForecast = Array.isArray(payload?.data)
     ? payload.data.flatMap((region) => Array.isArray(region?.cuaca) ? region.cuaca : [])
     : [];
-  const bmkgCurrent = bmkgForecast.flat().find(Boolean) || null;
+  const bmkgSlots = bmkgForecast.flat().filter(Boolean);
+  const bmkgCurrent = bmkgSlots.length > 0
+    ? bmkgSlots
+      .map((slot) => ({
+        slot,
+        time: toDateSafe(slot?.local_datetime || slot?.utc_datetime || slot?.datetime),
+      }))
+      .filter((item) => item.time)
+      .sort((a, b) => Math.abs(a.time.getTime() - now.getTime()) - Math.abs(b.time.getTime() - now.getTime()))
+      .map((item) => item.slot)[0]
+    : null;
 
   const weatherCode =
     bmkgCurrent?.weather ??
@@ -383,6 +393,13 @@ function parseWeatherPayload(payload, config) {
     payload?.current?.condition?.text ??
     payload?.weather_desc ??
     null;
+  const weatherDescEn = bmkgCurrent?.weather_desc_en || null;
+  const cloudCoverPercent = toNumber(bmkgCurrent?.tcc);
+  const windDirectionTo = bmkgCurrent?.wd_to || null;
+  const visibilityKm = toNumber(bmkgCurrent?.vis ?? bmkgCurrent?.visibility);
+  const bmkgLocalDate = toDateSafe(bmkgCurrent?.local_datetime);
+  const bmkgUtcDate = toDateSafe(bmkgCurrent?.utc_datetime);
+  const bmkgRaw = bmkgCurrent ? JSON.stringify(bmkgCurrent) : null;
 
   const rainfallMm =
     toNumber(openMeteoCurrent?.rain) ??
@@ -437,27 +454,9 @@ function parseWeatherPayload(payload, config) {
       ? inferWindDirection(toNumber(payload.wind.deg))
       : payload?.current?.wind_dir || payload?.wind_direction || null);
 
-  const rainDurationHours =
-    (Array.isArray(openMeteoDaily?.precipitation_hours)
-      ? toNumber(openMeteoDaily.precipitation_hours[0])
-      : null) ??
-    estimateBmkgRainDurationHours(payload);
-
   const openMeteoPrecipProb = Array.isArray(openMeteoHourly?.precipitation_probability)
     ? toNumber(openMeteoHourly.precipitation_probability[0])
     : null;
-  const openMeteoPrecipSum = Array.isArray(openMeteoDaily?.precipitation_sum)
-    ? toNumber(openMeteoDaily.precipitation_sum[0])
-    : null;
-  const openMeteoPrecipHours = Array.isArray(openMeteoDaily?.precipitation_hours)
-    ? toNumber(openMeteoDaily.precipitation_hours[0])
-    : null;
-  const openMeteoPrecipProbMax = Array.isArray(openMeteoDaily?.precipitation_probability_max)
-    ? toNumber(openMeteoDaily.precipitation_probability_max[0])
-    : null;
-  const openMeteoLat = toNumber(payload?.latitude);
-  const openMeteoLon = toNumber(payload?.longitude);
-  const openMeteoTimezone = payload?.timezone || null;
   const weatherDescFromRain =
     rainfallMm == null
       ? null
@@ -469,15 +468,8 @@ function parseWeatherPayload(payload, config) {
             ? 'Hujan Sedang'
             : 'Hujan Lebat';
 
-  const locationCode = (() => {
-    if (String(payload?.source || '').toLowerCase().includes('open_meteo')) {
-      const lat = toNumber(payload?.latitude);
-      const lon = toNumber(payload?.longitude);
-      if (lat != null && lon != null) return `${lat},${lon}`;
-    }
-
-    return String(config.weatherBmkgAdm4 || '').trim() || '97.73.04';
-  })();
+  const rainDurationHours = estimateBmkgRainDurationHours(payload);
+  const locationCode = String(config.weatherBmkgAdm4 || '').trim() || '97.73.04';
 
   return {
     rainfallMm: rainfallMm == null ? null : Number(rainfallMm.toFixed(2)),
@@ -487,6 +479,13 @@ function parseWeatherPayload(payload, config) {
     windDirection,
     weatherCode: weatherCode == null ? null : String(weatherCode),
     weatherDesc: weatherDesc || weatherDescFromRain,
+    weatherDescEn,
+    cloudCoverPercent: cloudCoverPercent == null ? null : Math.round(cloudCoverPercent),
+    windDirectionTo,
+    visibilityKm,
+    bmkgLocalDatetime: bmkgLocalDate ? bmkgLocalDate.toISOString().slice(0, 19).replace('T', ' ') : null,
+    bmkgUtcDatetime: bmkgUtcDate ? bmkgUtcDate.toISOString().slice(0, 19).replace('T', ' ') : null,
+    bmkgRaw,
     forecastDate: now.toISOString().slice(0, 10),
     forecastHour: now.getHours(),
     rainDurationHours,
@@ -494,15 +493,6 @@ function parseWeatherPayload(payload, config) {
       rainfallMm == null
         ? inferRainIntensityFromWeatherDesc(weatherDesc)
         : inferRainIntensity(rainfallMm),
-    precipitationMm: toNumber(openMeteoCurrent?.precipitation),
-    rainMm: toNumber(openMeteoCurrent?.rain),
-    precipitationProbability: openMeteoPrecipProb,
-    precipitationSumMm: openMeteoPrecipSum,
-    precipitationHours: openMeteoPrecipHours,
-    precipitationProbabilityMax: openMeteoPrecipProbMax,
-    openMeteoLat,
-    openMeteoLon,
-    openMeteoTimezone,
     source: payload?.source || 'BMKG',
     locationCode,
   };
@@ -576,15 +566,6 @@ function parseStormGlassTidePayload(payload, config) {
     lowTideTime,
     lowTideLevelCm,
     predictionDate: now.toISOString().slice(0, 10),
-    isSpringTide: false,
-    isNeapTide: false,
-    moonPhase: null,
-    waveHeightM: null,
-    waveDirectionDeg: null,
-    wavePeriodS: null,
-    marineLat: toNumber(station.lat || meta.lat),
-    marineLon: toNumber(station.lng || meta.lng),
-    marineTimezone: null,
     source: 'STORMGLASS',
     stationCode: station.name || config.tideStationCode || 'stormglass',
   };
@@ -685,15 +666,6 @@ function parseTidePayload(payload, config) {
     lowTideTime,
     lowTideLevelCm,
     predictionDate: now.toISOString().slice(0, 10),
-    isSpringTide: false,
-    isNeapTide: false,
-    moonPhase: payload?.moon_phase || null,
-    waveHeightM: marineCurrentHeightM,
-    waveDirectionDeg: marineCurrentDirectionDeg,
-    wavePeriodS: marineCurrentPeriodS,
-    marineLat: toNumber(payload?.latitude),
-    marineLon: toNumber(payload?.longitude),
-    marineTimezone: payload?.timezone || null,
     source: payload?.source || (marineWaveHeights.length > 0 ? 'OPEN_METEO_MARINE' : 'EXTERNAL_API'),
     stationCode: config.tideStationCode || (marineWaveHeights.length > 0 ? 'open-meteo-marine' : null),
   };
@@ -703,11 +675,11 @@ async function persistWeatherData(weatherData) {
   const sql = `
     INSERT INTO weather_data (
       rainfall_mm, humidity, temperature, wind_speed, wind_direction,
-      weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
-      precipitation_mm, rain_mm, precipitation_probability, precipitation_sum_mm, precipitation_hours,
-      precipitation_probability_max, open_meteo_lat, open_meteo_lon, open_meteo_timezone,
+      weather_code, weather_desc, weather_desc_en, cloud_cover_percent, wind_direction_to,
+      visibility_km, bmkg_local_datetime, bmkg_utc_datetime, bmkg_raw,
+      forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
       source, location_code
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   await db.query(sql, [
@@ -718,19 +690,17 @@ async function persistWeatherData(weatherData) {
     weatherData.windDirection,
     weatherData.weatherCode,
     weatherData.weatherDesc,
+    weatherData.weatherDescEn,
+    weatherData.cloudCoverPercent,
+    weatherData.windDirectionTo,
+    weatherData.visibilityKm,
+    weatherData.bmkgLocalDatetime,
+    weatherData.bmkgUtcDatetime,
+    weatherData.bmkgRaw,
     weatherData.forecastDate,
     weatherData.forecastHour,
     weatherData.rainDurationHours,
     weatherData.rainIntensity,
-    weatherData.precipitationMm,
-    weatherData.rainMm,
-    weatherData.precipitationProbability,
-    weatherData.precipitationSumMm,
-    weatherData.precipitationHours,
-    weatherData.precipitationProbabilityMax,
-    weatherData.openMeteoLat,
-    weatherData.openMeteoLon,
-    weatherData.openMeteoTimezone,
     weatherData.source,
     weatherData.locationCode,
   ]);
@@ -740,10 +710,9 @@ async function persistTideData(tideData) {
   const sql = `
     INSERT INTO tidal_data (
       tide_level_cm, tide_status, high_tide_time, high_tide_level_cm,
-      low_tide_time, low_tide_level_cm, prediction_date, is_spring_tide,
-      is_neap_tide, moon_phase, wave_height_m, wave_direction_deg, wave_period_s,
-      marine_lat, marine_lon, marine_timezone, source, station_code
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      low_tide_time, low_tide_level_cm, prediction_date,
+      source, station_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   await db.query(sql, [
@@ -754,15 +723,6 @@ async function persistTideData(tideData) {
     tideData.lowTideTime,
     tideData.lowTideLevelCm,
     tideData.predictionDate,
-    tideData.isSpringTide,
-    tideData.isNeapTide,
-    tideData.moonPhase,
-    tideData.waveHeightM,
-    tideData.waveDirectionDeg,
-    tideData.wavePeriodS,
-    tideData.marineLat,
-    tideData.marineLon,
-    tideData.marineTimezone,
     tideData.source,
     tideData.stationCode,
   ]);

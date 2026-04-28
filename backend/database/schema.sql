@@ -124,26 +124,22 @@ CREATE TABLE IF NOT EXISTS weather_data (
   -- Kode dan deskripsi cuaca BMKG
   weather_code VARCHAR(20),
   weather_desc VARCHAR(100),
-  
+  weather_desc_en VARCHAR(100),
+  cloud_cover_percent TINYINT UNSIGNED,    -- TCC (0-100)
+  wind_direction_to VARCHAR(10),           -- Arah tujuan angin (wd_to)
+  visibility_km DECIMAL(6, 2),             -- Jarak pandang (km)
+  bmkg_local_datetime DATETIME,            -- Waktu lokal BMKG
+  bmkg_utc_datetime DATETIME,              -- Waktu UTC BMKG
+  bmkg_raw JSON,                           -- Payload cuaca BMKG (slot terpilih)
+
   -- Waktu data
   forecast_date DATE NOT NULL,
   forecast_hour TINYINT UNSIGNED,           -- Jam prediksi (0-23)
   rain_duration_hours DECIMAL(5, 2),        -- Durasi hujan estimasi BMKG (jam)
-  
+
   -- Intensitas hujan
   rain_intensity ENUM('none', 'light', 'moderate', 'heavy', 'very_heavy') DEFAULT 'none',
 
-  -- Open-Meteo fields (opsional)
-  precipitation_mm DECIMAL(10, 2),         -- Curah hujan current (mm)
-  rain_mm DECIMAL(10, 2),                  -- Hujan current (mm)
-  precipitation_probability TINYINT UNSIGNED, -- Probabilitas hujan (%)
-  precipitation_sum_mm DECIMAL(10, 2),     -- Total hujan harian (mm)
-  precipitation_hours DECIMAL(5, 2),       -- Durasi hujan harian (jam)
-  precipitation_probability_max TINYINT UNSIGNED, -- Probabilitas hujan maksimum harian (%)
-  open_meteo_lat DECIMAL(10, 6),
-  open_meteo_lon DECIMAL(10, 6),
-  open_meteo_timezone VARCHAR(64),
-  
   -- Metadata
   source VARCHAR(50) DEFAULT 'BMKG',
   location_code VARCHAR(20),                -- Kode lokasi BMKG
@@ -174,22 +170,9 @@ CREATE TABLE IF NOT EXISTS tidal_data (
   
   -- Tanggal prediksi
   prediction_date DATE NOT NULL,
-  
-  -- Kondisi khusus
-  is_spring_tide BOOLEAN DEFAULT FALSE,     -- Pasang purnama
-  is_neap_tide BOOLEAN DEFAULT FALSE,       -- Pasang perbani
-  moon_phase VARCHAR(20),                   -- Fase bulan
 
-  -- Open-Meteo Marine fields (opsional)
-  wave_height_m DECIMAL(6, 3),
-  wave_direction_deg SMALLINT UNSIGNED,
-  wave_period_s DECIMAL(5, 2),
-  marine_lat DECIMAL(10, 6),
-  marine_lon DECIMAL(10, 6),
-  marine_timezone VARCHAR(64),
-  
   -- Metadata
-  source VARCHAR(50) DEFAULT 'BMKG',
+  source VARCHAR(50) DEFAULT 'STORMGLASS',
   station_code VARCHAR(20),                 -- Kode stasiun pasut
   recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

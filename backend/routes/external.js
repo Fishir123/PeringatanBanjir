@@ -73,9 +73,9 @@ router.get('/weather/latest', async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, rainfall_mm, humidity, temperature, wind_speed, wind_direction,
-              weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
-              precipitation_mm, rain_mm, precipitation_probability, precipitation_sum_mm, precipitation_hours,
-              precipitation_probability_max, open_meteo_lat, open_meteo_lon, open_meteo_timezone,
+              weather_code, weather_desc, weather_desc_en, cloud_cover_percent, wind_direction_to,
+              visibility_km, bmkg_local_datetime, bmkg_utc_datetime, bmkg_raw,
+              forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
               source, location_code, recorded_at
        FROM weather_data
        ORDER BY recorded_at DESC
@@ -100,9 +100,9 @@ router.get('/weather/history', async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT id, rainfall_mm, humidity, temperature, wind_speed, wind_direction,
-              weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
-              precipitation_mm, rain_mm, precipitation_probability, precipitation_sum_mm, precipitation_hours,
-              precipitation_probability_max, open_meteo_lat, open_meteo_lon, open_meteo_timezone,
+              weather_code, weather_desc, weather_desc_en, cloud_cover_percent, wind_direction_to,
+              visibility_km, bmkg_local_datetime, bmkg_utc_datetime, bmkg_raw,
+              forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
               source, location_code, recorded_at
        FROM weather_data
        ORDER BY recorded_at DESC
@@ -146,8 +146,7 @@ router.get('/tide/latest', async (req, res) => {
       `SELECT id, tide_level_cm, tide_status,
               high_tide_time, high_tide_level_cm,
               low_tide_time, low_tide_level_cm,
-              prediction_date, wave_height_m, wave_direction_deg, wave_period_s,
-              marine_lat, marine_lon, marine_timezone, source, station_code, recorded_at
+              prediction_date, source, station_code, recorded_at
        FROM tidal_data
        ORDER BY recorded_at DESC
        LIMIT 1`
@@ -160,6 +159,30 @@ router.get('/tide/latest', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Gagal mengambil data pasang surut terbaru',
+      error: error.message,
+    });
+  }
+});
+
+router.get('/tide/history', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 24, 200);
+
+    const [rows] = await db.query(
+      `SELECT id, tide_level_cm, tide_status, recorded_at
+       FROM tidal_data
+       ORDER BY recorded_at DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    res.json({
+      message: 'Riwayat pasang surut berhasil diambil',
+      data: rows,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Gagal mengambil riwayat pasang surut',
       error: error.message,
     });
   }
