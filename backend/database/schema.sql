@@ -124,6 +124,13 @@ CREATE TABLE IF NOT EXISTS weather_data (
   -- Kode dan deskripsi cuaca BMKG
   weather_code VARCHAR(20),
   weather_desc VARCHAR(100),
+  weather_desc_en VARCHAR(100),
+  cloud_cover_percent TINYINT UNSIGNED,    -- TCC (0-100)
+  wind_direction_to VARCHAR(10),           -- Arah tujuan angin (wd_to)
+  visibility_km DECIMAL(6, 2),             -- Jarak pandang (km)
+  bmkg_local_datetime DATETIME,            -- Waktu lokal BMKG
+  bmkg_utc_datetime DATETIME,              -- Waktu UTC BMKG
+  bmkg_raw JSON,                           -- Payload cuaca BMKG (slot terpilih)
 
   -- Waktu data
   forecast_date DATE NOT NULL,

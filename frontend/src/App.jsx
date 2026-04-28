@@ -12,24 +12,30 @@ import NotificationsPage from "./pages/NotificationsPage";
 import UsersPage from "./pages/UsersPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import { AuthProvider } from "./features/auth/AuthProvider";
+import RequireAuth from "./features/auth/RequireAuth";
 const queryClient = new QueryClient();
 const App = () => (<QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />}/>
-            <Route path="/sensor" element={<SensorPage />}/>
-            <Route path="/prediction" element={<PredictionPage />}/>
-            <Route path="/devices" element={<DevicesPage />}/>
-            <Route path="/notifications" element={<NotificationsPage />}/>
-            <Route path="/users" element={<UsersPage />}/>
-            <Route path="/settings" element={<SettingsPage />}/>
-          </Route>
-          <Route path="*" element={<NotFound />}/>
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />}/>
+            <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
+              <Route path="/" element={<Dashboard />}/>
+              <Route path="/sensor" element={<SensorPage />}/>
+              <Route path="/prediction" element={<PredictionPage />}/>
+              <Route path="/devices" element={<DevicesPage />}/>
+              <Route path="/notifications" element={<NotificationsPage />}/>
+              <Route path="/users" element={<UsersPage />}/>
+              <Route path="/settings" element={<SettingsPage />}/>
+            </Route>
+            <Route path="*" element={<NotFound />}/>
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>);

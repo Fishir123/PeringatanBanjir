@@ -16,6 +16,8 @@ var usersRouter = require('./routes/users');
 var sensorRouter = require('./routes/sensor');
 var externalRouter = require('./routes/external');
 var externalService = require('./services/externalDataService');
+var authRouter = require('./routes/auth');
+var authMiddleware = require('./middleware/auth');
 
 // MQTT Subscriber for ESP32 sensor data
 var mqttSubscriber = require('./mqtt/subscriber');
@@ -38,12 +40,13 @@ app.use((req, res, next) => {
 });
 app.use(express.static(frontendDistPath));
 
-app.use('/users', usersRouter);
-app.use('/api/sensor-data', sensorRouter);
-app.use('/api/external', externalRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/sensor-data', authMiddleware, sensorRouter);
+app.use('/api/external', authMiddleware, externalRouter);
 
 app.get('*', function(req, res, next) {
-  if (req.path.startsWith('/api/') || req.path.startsWith('/users')) {
+  if (req.path.startsWith('/api/')) {
     return next();
   }
 

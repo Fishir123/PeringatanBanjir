@@ -73,7 +73,9 @@ router.get('/weather/latest', async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, rainfall_mm, humidity, temperature, wind_speed, wind_direction,
-              weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
+              weather_code, weather_desc, weather_desc_en, cloud_cover_percent, wind_direction_to,
+              visibility_km, bmkg_local_datetime, bmkg_utc_datetime, bmkg_raw,
+              forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
               source, location_code, recorded_at
        FROM weather_data
        ORDER BY recorded_at DESC
@@ -98,7 +100,9 @@ router.get('/weather/history', async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT id, rainfall_mm, humidity, temperature, wind_speed, wind_direction,
-              weather_code, weather_desc, forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
+              weather_code, weather_desc, weather_desc_en, cloud_cover_percent, wind_direction_to,
+              visibility_km, bmkg_local_datetime, bmkg_utc_datetime, bmkg_raw,
+              forecast_date, forecast_hour, rain_duration_hours, rain_intensity,
               source, location_code, recorded_at
        FROM weather_data
        ORDER BY recorded_at DESC
