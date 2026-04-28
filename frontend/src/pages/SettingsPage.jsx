@@ -8,12 +8,17 @@ import {
 } from '@/features/sensor/api/externalApi';
 
 const initialConfig = {
-  weatherApiBaseUrl: '',
+  weatherApiBaseUrl: 'https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.29.13.2007',
   weatherApiKey: '',
+<<<<<<< HEAD
+  weatherLocationLat: '-7.0167',
+  weatherLocationLon: '113.8667',
+=======
   weatherBmkgAdm4: '',
+>>>>>>> origin/master
   tideApiBaseUrl: '',
   tideApiKey: '',
-  tideStationCode: '',
+  tideStationCode: 'sumenep',
 };
 
 const SettingsPage = () => {
@@ -158,6 +163,31 @@ const SettingsPage = () => {
                 disabled={loadingConfig || isBusy}
               />
             </div>
+<<<<<<< HEAD
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Latitude</label>
+                <input
+                  name="weatherLocationLat"
+                  value={config.weatherLocationLat}
+                  onChange={handleConfigChange}
+                placeholder="-7.0410"
+                  className="w-full mt-1 px-3 py-2 rounded-lg bg-muted border border-border text-card-foreground text-sm focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  disabled={loadingConfig || isBusy}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Longitude</label>
+                <input
+                  name="weatherLocationLon"
+                  value={config.weatherLocationLon}
+                  onChange={handleConfigChange}
+                placeholder="113.8665"
+                  className="w-full mt-1 px-3 py-2 rounded-lg bg-muted border border-border text-card-foreground text-sm focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  disabled={loadingConfig || isBusy}
+                />
+              </div>
+=======
             <div>
               <label className="text-xs text-muted-foreground">Kode Wilayah BMKG (ADM4)</label>
               <input
@@ -169,6 +199,7 @@ const SettingsPage = () => {
                 disabled={loadingConfig || isBusy}
               />
               <p className="text-[11px] text-muted-foreground mt-1">Gunakan kode ADM4 desa/kelurahan BMKG untuk titik prakiraan cuaca.</p>
+>>>>>>> origin/master
             </div>
           </div>
 

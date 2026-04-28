@@ -322,6 +322,44 @@ async function saveIntegrationConfig(inputConfig = {}) {
 }
 
 function parseWeatherPayload(payload, config) {
+  const bmkgSelection = pickBestBmkgEntry(payload);
+
+  if (bmkgSelection?.entry) {
+    const bmkgEntry = bmkgSelection.entry;
+    const parsedDate = new Date(bmkgEntry.local_datetime || bmkgEntry.datetime || Date.now());
+    const isValidDate = !Number.isNaN(parsedDate.getTime());
+
+    const rainfallMm = toNumber(bmkgEntry.tp) ?? toNumber(bmkgEntry.rainfall_mm) ?? 0;
+    const humidity = toNumber(bmkgEntry.hu) ?? toNumber(bmkgEntry.humidity) ?? null;
+    const temperature = toNumber(bmkgEntry.t) ?? toNumber(bmkgEntry.temperature) ?? null;
+    const windSpeedKmh = toNumber(bmkgEntry.ws) ?? toNumber(bmkgEntry.wind_speed) ?? null;
+
+    const windDirection =
+      bmkgEntry.wd ||
+      bmkgEntry.wind_direction ||
+      inferWindDirection(toNumber(bmkgEntry.wd_deg) ?? toNumber(bmkgEntry.wind_deg));
+
+    return {
+      rainfallMm: Number(rainfallMm.toFixed(2)),
+      humidity,
+      temperature,
+      windSpeedKmh,
+      windDirection,
+      weatherCode: bmkgEntry.weather == null ? null : String(bmkgEntry.weather),
+      weatherDesc: bmkgEntry.weather_desc || bmkgEntry.weather_desc_en || null,
+      forecastDate: (isValidDate ? parsedDate : new Date()).toISOString().slice(0, 10),
+      forecastHour: isValidDate ? parsedDate.getHours() : new Date().getHours(),
+      rainIntensity: inferRainIntensity(rainfallMm),
+      source: 'BMKG',
+      locationCode:
+        bmkgSelection?.lokasi?.adm4 ||
+        bmkgSelection?.lokasi?.adm3 ||
+        getLocationCodeFromUrl(config.weatherApiBaseUrl) ||
+        `${config.weatherLocationLat || ''},${config.weatherLocationLon || ''}`.replace(/^,|,$/g, '') ||
+        null,
+    };
+  }
+
   const now = new Date();
   const openMeteoCurrent = payload?.current || {};
   const openMeteoDaily = payload?.daily || {};

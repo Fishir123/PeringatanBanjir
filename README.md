@@ -25,14 +25,14 @@ Edit `backend/.env` sesuai kredensial MySQL kamu.
 Tambahkan juga konfigurasi API eksternal untuk cuaca dan pasang surut:
 
 ```env
-WEATHER_API_BASE_URL=
+WEATHER_API_BASE_URL=https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.29.13.2007
 WEATHER_API_KEY=
-WEATHER_LOCATION_LAT=
-WEATHER_LOCATION_LON=
+WEATHER_LOCATION_LAT=-7.0167
+WEATHER_LOCATION_LON=113.8667
 
 TIDE_API_BASE_URL=
 TIDE_API_KEY=
-TIDE_STATION_CODE=
+TIDE_STATION_CODE=sumenep
 ```
 
 ## 3) Install dependency
