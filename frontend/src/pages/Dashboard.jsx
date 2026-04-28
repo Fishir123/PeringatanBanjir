@@ -5,6 +5,7 @@ import {
   useLatestTideQuery,
   useLatestSensorByDeviceQuery,
   useLatestWeatherQuery,
+  useTideHistoryQuery,
   useSensorHistoryQuery,
   useWeatherHistoryQuery,
 } from '@/features/sensor/hooks/useSensorQueries';
@@ -12,6 +13,7 @@ import {
   buildDashboardStatus,
   buildNotificationRows,
   buildRainfallChartData,
+  buildTideChartData,
   buildWaterLevelChartData,
 } from '@/features/sensor/utils/sensorMappers';
 import { statusLabels } from '@/shared/constants/status';
@@ -53,9 +55,11 @@ const Dashboard = () => {
     const latestWeatherQuery = useLatestWeatherQuery();
     const latestTideQuery = useLatestTideQuery();
     const weatherHistoryQuery = useWeatherHistoryQuery();
+    const tideHistoryQuery = useTideHistoryQuery();
     const data = useMemo(() => buildDashboardStatus(latestQuery.data, historyQuery.data), [latestQuery.data, historyQuery.data]);
     const waterLevelChartData = useMemo(() => buildWaterLevelChartData(historyQuery.data), [historyQuery.data]);
     const rainfallChartData = useMemo(() => buildRainfallChartData(weatherHistoryQuery.data), [weatherHistoryQuery.data]);
+    const tideChartData = useMemo(() => buildTideChartData(tideHistoryQuery.data), [tideHistoryQuery.data]);
     const notifications = useMemo(() => buildNotificationRows(historyQuery.data), [historyQuery.data]);
     const latestWeather = latestWeatherQuery.data;
     const latestTide = latestTideQuery.data;
@@ -131,7 +135,8 @@ const Dashboard = () => {
       latestQuery.isLoading ||
       latestWeatherQuery.isLoading ||
       latestTideQuery.isLoading ||
-      weatherHistoryQuery.isLoading
+      weatherHistoryQuery.isLoading ||
+      tideHistoryQuery.isLoading
     ) {
         return (<div className="flood-card">
         <p className="text-sm text-muted-foreground">Memuat data sensor dari backend...</p>
@@ -142,7 +147,8 @@ const Dashboard = () => {
       latestQuery.isError ||
       latestWeatherQuery.isError ||
       latestTideQuery.isError ||
-      weatherHistoryQuery.isError
+      weatherHistoryQuery.isError ||
+      tideHistoryQuery.isError
     ) {
         return (<div className="flood-card border border-status-danger/40">
         <p className="text-sm text-status-danger">Gagal memuat data sensor. Pastikan backend berjalan di port 3000.</p>
@@ -198,7 +204,7 @@ const Dashboard = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid lg:grid-cols-3 gap-4">
         <div className="flood-card">
           <h3 className="text-sm font-semibold text-card-foreground mb-4">📊 Tren Tinggi Air (24 Jam)</h3>
           {waterLevelChartData.length === 0 ? (
@@ -233,6 +239,25 @@ const Dashboard = () => {
                 <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }}/>
                 <Bar dataKey="rainfall" fill="hsl(var(--status-alert))" radius={[4, 4, 0, 0]}/>
               </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="flood-card">
+          <h3 className="text-sm font-semibold text-card-foreground mb-4">🌊 Pasang Surut (24 Jam)</h3>
+          {tideChartData.length === 0 ? (
+            <div className="h-[250px] rounded-lg border border-dashed border-border flex items-center justify-center text-center px-4">
+              <p className="text-sm text-muted-foreground">Belum ada data pasang surut dalam 24 jam terakhir.</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={tideChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
+                <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}/>
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }}/>
+                <Area type="monotone" dataKey="level" stroke="hsl(var(--status-alert))" fill="hsl(var(--status-alert))" fillOpacity={0.18} strokeWidth={2}/>
+              </AreaChart>
             </ResponsiveContainer>
           )}
         </div>

@@ -51,6 +51,10 @@ export function fetchLatestTide() {
   return requestJson('/tide/latest', { method: 'GET' });
 }
 
+export function fetchTideHistory(limit = 24) {
+  return requestJson(`/tide/history?limit=${encodeURIComponent(limit)}`, { method: 'GET' });
+}
+
 export function triggerCombinedFetch() {
   return requestJson('/fetch-all', { method: 'POST' });
 }

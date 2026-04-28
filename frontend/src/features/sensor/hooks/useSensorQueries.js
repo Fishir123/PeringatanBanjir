@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchLatestSensorByDevice, fetchSensorHistory } from '@/features/sensor/api/sensorApi';
-import { fetchLatestTide, fetchLatestWeather, fetchWeatherHistory } from '@/features/sensor/api/externalApi';
+import { fetchLatestTide, fetchLatestWeather, fetchWeatherHistory, fetchTideHistory } from '@/features/sensor/api/externalApi';
 
 const REFRESH_INTERVAL_MS = 1000;
 
@@ -40,6 +40,14 @@ export function useLatestTideQuery() {
   return useQuery({
     queryKey: ['latest-tide'],
     queryFn: fetchLatestTide,
+    refetchInterval: REFRESH_INTERVAL_MS,
+  });
+}
+
+export function useTideHistoryQuery(limit = 24) {
+  return useQuery({
+    queryKey: ['tide-history', limit],
+    queryFn: () => fetchTideHistory(limit),
     refetchInterval: REFRESH_INTERVAL_MS,
   });
 }

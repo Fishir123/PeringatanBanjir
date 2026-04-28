@@ -164,6 +164,18 @@ export function buildRainfallChartData(historyRows, limit = 24) {
   }));
 }
 
+export function buildTideChartData(historyRows, limit = 24) {
+  const chronological = (historyRows ?? []).slice().reverse().slice(-limit);
+
+  return chronological.map((row) => ({
+    time: new Date(row.recorded_at || row.prediction_date || Date.now()).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    level: Number(row?.tide_level_cm ?? 0),
+  }));
+}
+
 export function buildDashboardStatus(latestRows, historyRows) {
   const latestNormalized = (latestRows ?? []).map(mapSensorRowToUi);
   const historyNormalized = (historyRows ?? []).map(mapSensorRowToUi);
